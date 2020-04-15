@@ -1,0 +1,39 @@
+{
+  "properties": [
+    {
+      "name": "customize.logging.name",
+      "type": "java.lang.String",
+      "description": "项目名称."
+    },
+    {
+      "name": "customize.logging.level",
+      "type": "java.lang.String",
+      "description": "日志级别 DEBUG INFO WARN ERROR."
+    },
+    {
+      "name": "customize.logging.path",
+      "type": "java.lang.String",
+      "description": "日志路径."
+    },
+    {
+      "name": "customize.logging.max-history",
+      "type": "java.lang.Integer",
+      "description": "最大保存时间."
+    },
+    {
+      "name": "customize.logging.queue-size",
+      "type": "java.lang.Integer",
+      "description": "异步缓冲队列的长度,该值会影响性能."
+    },
+    {
+      "name": "customize.logging.max-file-size",
+      "type": "java.lang.String",
+      "description": "日志文件最大的大小."
+    },
+    {
+      "name": "customize.allow-without-license",
+      "type": "java.lang.String",
+      "description": "Description for customize.allow-without-license."
+    }
+  ]
+}

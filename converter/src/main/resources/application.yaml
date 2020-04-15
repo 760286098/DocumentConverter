@@ -1,0 +1,147 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /converter
+
+spring:
+  # 配置redis
+  redis:
+    # Redis数据库索引（默认为0）
+    database: 2
+    # Redis服务器地址
+    host: localhost
+    # Redis服务器连接端口
+    port: 6379
+    # Redis服务器密码
+    password:
+    # 连接超时时间（毫秒）
+    timeout: 5000
+    jedis:
+      pool:
+        # 连接池中的最大空闲连接
+        max-idle: 8
+        # 连接池中的最小空闲连接
+        min-idle: 0
+        # 连接池最大连接数（使用负值表示没有限制）
+        max-active: 8
+        # 连接池最大阻塞等待时间（使用负值表示没有限制）
+        max-wait: -1
+
+  datasource:
+    name: mysql_converter
+    # 数据库访问配置, 使用druid数据源
+    type: com.alibaba.druid.pool.DruidDataSource
+    # druid相关配置
+    druid:
+      # 监控统计拦截的filters
+      filters: stat, wall
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      # url链接
+      url: jdbc:mysql://127.0.0.1:3306/converter?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&serverTimezone=GMT
+      username: root
+      password: root
+      # 配置初始化大小/最小/最大
+      initial-size: 1
+      min-idle: 1
+      max-active: 20
+      # 获取连接等待超时时间
+      max-wait: 60000
+      # 间隔多久进行一次检测，检测需要关闭的空闲连接
+      time-between-eviction-runs-millis: 60000
+      # 一个连接在池中最小生存的时间
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      # 打开PSCache，并指定每个连接上PSCache的大小。oracle设为true，mysql设为false。分库分表较多推荐设置为false
+      pool-prepared-statements: false
+      max-pool-prepared-statement-per-connection-size: 20
+
+      # WebStatFilter配置
+      web-stat-filter:
+        enabled: true
+        # 添加过滤规则
+        url-pattern: /*
+        # 忽略过滤的格式
+        exclusions: '*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*'
+
+      # StatViewServlet配置
+      stat-view-servlet:
+        enabled: true
+        # 访问路径为/druid时，跳转到StatViewServlet
+        url-pattern: /druid/*
+        # 是否能够重置数据
+        reset-enable: false
+        # 需要账号密码才能访问控制台
+        login-username: root
+        login-password: root
+        # IP白名单
+        # allow: 127.0.0.1
+        #　IP黑名单（共同存在时，deny优先于allow）
+        # deny: 192.168.1.218
+
+      # 配置StatFilter
+      filter:
+        stat:
+          log-slow-sql: true
+
+  # 模板引擎
+  thymeleaf:
+    prefix: classpath:/templates/
+    check-template-location: true
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML
+    cache: false
+
+  banner:
+    location: banner.txt
+
+mybatis:
+  # dto对象所在包
+  type-aliases-package: com.converter.pojo
+
+
+# 自定义配置
+customize:
+  # 是否允许没有授权文件
+  allow-without-license: false
+  # 字体目录
+  font-dir: C:\Windows\Fonts
+  # redis存放文件名的key
+  redis-file-key: REDIS_FILE
+  # redis存放目录名的key
+  redis-dir-key: REDIS_DIR
+  # redis存放转换信息的key
+  redis-info-key: REDIS_INFO
+  # 默认目的目录
+  target-dir-path: C:\Users\Evan\Desktop\result
+  # 最大重试次数
+  max-retries: 5
+  # 任务超时时间（秒）
+  mission-timeout: 300
+  pool:
+    # 核心线程数
+    core-pool-size: 50
+    # 最大线程数
+    max-pool-size: 100
+    # 等待队列长度
+    queue-capacity: 200
+    # 转换线程前缀
+    prefix: converter-
+    # 线程最大空闲时间
+    keep-alive-seconds: 60
+  logging:
+    # logback项目名称
+    name: converter
+    # 日志级别 DEBUG INFO WARN ERROR
+    level: INFO
+    # 日志路径
+    path: ./logs
+    # 最大保存时间（天）
+    max-history: 30
+    # 异步缓冲队列的长度,该值会影响性能, 默认值为256
+    queue-size: 256
+    # 日志文件最大的大小
+    max-file-size: 25MB

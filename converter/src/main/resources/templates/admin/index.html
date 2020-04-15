@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" th:with="type='list'" xmlns:th="http://www.thymeleaf.org">
+<header th:replace="~{admin/commons::header}"></header>
+<link rel="stylesheet" th:href="@{/css/bootstrap-table.min.css}"/>
+<script th:src="@{/js/bootstrap-table.min.js}"></script>
+<script th:src="@{/js/bootstrap-table-zh-CN.min.js}"></script>
+<body class="fixed-left">
+<div id="wrapper">
+    <div th:replace="~{admin/commons::sidebar}"></div>
+    <div class="content-page">
+        <div class="content">
+            <div class="container">
+                <div aria-hidden="true" aria-labelledby="myModalLabel" class="modal fade" id="myModal"
+                     role="dialog" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button aria-hidden="true" class="close" data-dismiss="modal" type="button">×</button>
+                                <h4 class="modal-title" id="myModalLabel">取消任务</h4>
+                            </div>
+                            <div class="modal-body">
+                                <p id="cancelMsg"></p>
+                                <p>(由于转换速度比较快, 而前端5秒刷新一次, 可能部分任务实际上已完成, 此时取消会出错, 不过不影响程序正常运行)</p>
+                            </div>
+                            <div class="modal-footer" style="margin-bottom: -20px; padding-top: 10px;">
+                                <button class="btn btn-default" data-dismiss="modal" type="button">否</button>
+                                <button class="btn btn-primary" id="confirmButton" type="button">是</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <table class="table table-hover" id="info-table"
+                       style="table-layout: fixed;
+                       word-break:break-all; word-wrap:break-word;">
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    const table = $('#info-table').bootstrapTable({
+        // toolbar: '#toolbar',                //工具按钮用哪个容器
+        method: "get",
+        url: /*[[@{/getInfo}]]*/+"",        //使用thymeleaf获取url
+        striped: true,                      //是否显示行间隔色
+        cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
+        pagination: true,                   //是否显示分页（*）
+        sortable: true,                     //是否启用排序
+        sortOrder: "asc",                   //排序方式
+        rememberOrder: true,
+        serverSort: false,
+        // queryParams: 'queryParams',         //传递参数（*）
+        sidePagination: "client",           //分页方式：client客户端分页，server服务端分页（*）
+        pageNumber: 1,                       //初始化加载第一页，默认第一页
+        pageSize: 10,                       //每页的记录行数（*）
+        pageList: [10, 25, 50, 100],        //可供选择的每页的行数（*）
+        smartDisplay: true,
+        search: true,                      //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+        strictSearch: false,
+        showColumns: true,                 //是否显示所有的列
+        showRefresh: true,                 //是否显示刷新按钮
+        minimumCountColumns: 1,             //最少允许的列数
+        clickToSelect: true,                //是否启用点击选中行
+        // height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
+        uniqueId: "source",                     //每一行的唯一标识，一般为主键列
+        showToggle: true,                   //是否显示详细视图和列表视图的切换按钮
+        cardView: false,                    //是否显示详细视图
+        detailView: false,                   //是否显示父子表
+        rowStyle: 'rowStyle',
+        columns: [{
+            field: 'id',
+            visible: false,
+        }, {
+            title: '源路径',
+            field: 'source',
+            align: 'center',
+            width: 80,
+            sortable: true,
+        }, {
+            title: '目的路径',
+            field: 'target',
+            align: 'center',
+            width: 80,
+            sortable: true,
+        }, {
+            title: '大小',
+            field: 'size',
+            align: 'center',
+            width: 40,
+            sortable: true,
+            sorter: 'customColumnSortSize',
+        }, {
+            title: '加入时间',
+            field: 'join',
+            align: 'center',
+            width: 80,
+            sortable: true,
+            formatter: 'formatTime',
+        }, {
+            title: '开始时间',
+            field: 'start',
+            align: 'center',
+            width: 80,
+            sortable: true,
+            formatter: 'formatTime',
+        }, {
+            title: '结束时间',
+            field: 'end',
+            align: 'center',
+            width: 80,
+            sortable: true,
+            formatter: 'formatTime',
+        }, {
+            title: '耗时',
+            field: 'cost',
+            align: 'center',
+            width: 40,
+            sortable: true,
+            sorter: 'customColumnSortCost',
+            formatter: 'formatCost',
+        }, {
+            title: '状态',
+            field: 'status',
+            align: 'center',
+            width: 40,
+            sortable: true,
+            sorter: 'customColumnSortStatus',
+            formatter: 'formatStatus',
+        }, {
+            title: '重试',
+            field: 'retry',
+            align: 'center',
+            width: 40,
+            sortable: true,
+        }, {
+            title: '错误',
+            field: 'exceptions',
+            align: 'center',
+            width: 40,
+            sortable: true,
+            formatter: 'formatException',
+        }, {
+            title: '操作',
+            field: 'action',
+            align: 'center',
+            width: 30,
+            formatter: 'actionFormatter',
+        }]
+    });
+
+    // 定时任务, 每5秒执行一次
+    (function () {
+        setInterval(function () {
+            table.bootstrapTable('refresh', {silent: true});
+        }, 5000);
+    })();
+
+    // 行内样式
+    function rowStyle(row) {
+        // 这里有5个取值代表5中颜色['active', 'success', 'info', 'warning', 'danger'];
+        let strclass = "";
+        if (row.status === "RUN") {
+            strclass = 'info';
+        } else if (row.status === "ERROR" || row.status === 'CANCEL') {
+            strclass = 'danger';
+        } else if (row.status === "FINISH") {
+            strclass = 'success';
+        } else if (row.status === "RETRY") {
+            strclass = 'warning';
+        }
+        return {classes: strclass}
+    }
+
+    // 自定义文件大小排序
+    function customColumnSortSize(value1, value2) {
+        const a1 = value1.split(" ")[0];
+        const a2 = value1.split(" ")[1];
+        const b1 = value2.split(" ")[0];
+        const b2 = value2.split(" ")[1];
+        if (a2 === b2) {
+            return a1 - b1;
+        } else {
+            return getSizePriority(a2) - getSizePriority(b2);
+        }
+    }
+
+    // 比较大小后缀优先级
+    function getSizePriority(value) {
+        if (value === "MB")
+            return 3;
+        if (value === "KB")
+            return 2;
+        if (value === "B")
+            return 1;
+    }
+
+    // 格式化时间
+    function formatTime(value) {
+        if (value === 0)
+            return '-';
+        const date = new Date(value);
+        const Y = date.getFullYear();
+        let M = date.getMonth() + 1;
+        M = M < 10 ? ('0' + M) : M;
+        let D = date.getDate();
+        D = D < 10 ? ('0' + D) : D;
+        let h = date.getHours();
+        h = h < 10 ? ('0' + h) : h;
+        let m = date.getMinutes();
+        m = m < 10 ? ('0' + m) : m;
+        let s = date.getSeconds();
+        s = s < 10 ? ('0' + s) : s;
+        return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + s;
+    }
+
+    // 格式化状态
+    function formatStatus(value) {
+        if (value === 'RUN')
+            return '正在运行';
+        if (value === 'FINISH')
+            return '已完成';
+        if (value === 'RETRY')
+            return '正在重试';
+        if (value === 'ERROR')
+            return '错误';
+        if (value === 'CANCEL')
+            return '取消';
+        if (value === 'WAIT_OUTSIDE' || value === 'WAIT_IN_POOL')
+            return '正在等待';
+        return '-';
+    }
+
+    // 格式化耗时
+    function formatCost(value, row) {
+        const cost = row.end - row.start;
+        if (cost <= 0)
+            return '-';
+        return cost / 1000 + "秒";
+    }
+
+    // 格式化异常
+    function formatException(value) {
+        if (value === '')
+            return '-';
+        return '<a href="javascript:void(0)" data-toggle="tooltip" title="' + value + '">错误详情</a>';
+    }
+
+    // 自定义任务耗时排序
+    function customColumnSortCost(value1, value2, row1, row2) {
+        return (row1.end - row1.start) - (row2.end - row2.start);
+    }
+
+    // 自定义任务状态排序
+    function customColumnSortStatus(value1, value2) {
+        return getStatusPriority(value1) - getStatusPriority(value2);
+    }
+
+    // 定义状态优先级
+    function getStatusPriority(value) {
+        if (value === 'RUN')
+            return 6;
+        if (value === 'RETRY')
+            return 5;
+        if (value === 'WAIT_IN_POOL')
+            return 4;
+        if (value === 'WAIT_OUTSIDE')
+            return 3;
+        if (value === 'FINISH')
+            return 2;
+        if (value === 'CANCEL')
+            return 1;
+        if (value === 'ERROR')
+            return 0;
+        return -1;
+    }
+
+    //操作栏的格式化
+    function actionFormatter(value, row) {
+        const status = row.status;
+        if (status === 'FINISH') {
+            const baseUrl =/*[[@{/preview?filename=}]]*/+'';
+            const url = window.encodeURI(baseUrl + row.target + '&source=' + row.source);
+            return '<a href="' + url + '" target="_blank" data-toggle="tooltip" title="预览">' +
+                '<i class="glyphicon glyphicon-eye-open"></i></a>';
+        }
+        if (status === 'RUN' || status === 'RETRY' || status === 'WAIT_IN_POOL' || status === 'WAIT_OUTSIDE') {
+            return '<a href="javascript:void(0)" onclick="confirmCancel(\'' + row.id + '\',\'' + window.encodeURI(row.source) +
+                '\')" data-toggle="tooltip" title="取消">' +
+                '<i class="glyphicon glyphicon-remove"></i></a>　'
+        }
+        return '';
+    }
+
+    // 取消任务
+    function confirmCancel(id, sourcePath) {
+        $('#myModal').modal('show');
+        $('#cancelMsg').html('是否取消任务[' + window.decodeURI(sourcePath) + ']?(无法恢复)');
+        $('#confirmButton').click(function () {
+            // 防止多次点击
+            $(this).off('click');
+            $.ajax({
+                type: "post",
+                url: /*[[@{/cancelById}]]*/+"",    //使用thymeleaf获取url
+                async: false,
+                data: {"id": id},
+                success: function (result) {
+                    if (result && result === 'success') {
+                        alert('取消成功');
+                        $('#myModal').modal('hide');
+                        table.bootstrapTable('refresh', {silent: true});
+                    } else {
+                        alert('取消失败\r\n' + result);
+                    }
+                },
+            });
+        });
+    }
+</script>
+</body>
+</html>
