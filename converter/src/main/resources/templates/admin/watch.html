@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" th:with="type='watch'" xmlns:th="http://www.thymeleaf.org">
+<header th:replace="~{admin/commons::header}"></header>
+<link rel="stylesheet" th:href="@{/css/bootstrap-table.min.css}"/>
+<script th:src="@{/js/bootstrap-table.min.js}"></script>
+<script th:src="@{/js/bootstrap-table-zh-CN.min.js}"></script>
+<body class="fixed-left">
+<div id="wrapper">
+    <div th:replace="~{admin/commons::sidebar}"></div>
+    <div class="content-page">
+        <div class="content">
+            <div class="container">
+                <button class="btn btn-primary btn-md" data-target="#myModal" data-toggle="modal">添加文件/文件夹</button>
+                <div aria-hidden="true" aria-labelledby="myModalLabel" class="modal fade" id="myModal"
+                     role="dialog" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button aria-hidden="true" class="close" data-dismiss="modal" type="button">×</button>
+                                <h4 class="modal-title" id="myModalLabel">添加文件/文件夹</h4>
+                            </div>
+                            <div class="modal-body">
+                                <form action="#" class="form-horizontal" id="add-form"
+                                      onsubmit="saveSetting();return false;"
+                                      role="form">
+                                    <div class="form-group">
+                                        <label class="col-sm-2 control-label" for="sourcePath">源路径</label>
+                                        <div class="col-sm-10">
+                                            <input class="form-control" id="sourcePath" name="sourcePath"
+                                                   pattern='[\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*'
+                                                   required="required"
+                                                   type="text">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-2 control-label" for="targetPath">目的路径</label>
+                                        <div class="col-sm-10">
+                                            <input class="form-control" id="targetPath" name="targetPath"
+                                                   pattern='([\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*)?'
+                                                   placeholder="不填写则使用默认目的路径"
+                                                   type="text">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-2 control-label" for="type">类型</label>
+                                        <div class="col-sm-10">
+                                            <select class="form-control" id="type" name="type">
+                                                <option value="file">文件</option>
+                                                <option value="dir">文件夹</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer" style="margin-bottom: -20px; padding-top: 10px;">
+                                <button class="btn btn-default" data-dismiss="modal" type="button">取消</button>
+                                <button class="btn btn-primary" form="add-form" type="submit">确定</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div aria-hidden="true" aria-labelledby="delModalLabel" class="modal fade" id="delModal"
+                     role="dialog" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button aria-hidden="true" class="close" data-dismiss="modal" type="button">×</button>
+                                <h4 class="modal-title" id="delModalLabel">删除监控</h4>
+                            </div>
+                            <div class="modal-body">
+                                <p id="cancelMsg"></p>
+                                <p>(由于转换速度比较快, 而前端5秒刷新一次, 可能部分任务实际上已完成, 此时取消会出错, 不过不影响程序正常运行)</p>
+                            </div>
+                            <div class="modal-footer" style="margin-bottom: -20px; padding-top: 10px;">
+                                <button class="btn btn-default" data-dismiss="modal" type="button">否</button>
+                                <button class="btn btn-primary" id="confirmButton" type="button">是</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <table class="table table-hover" id="files-table"
+                       style="table-layout: fixed;
+                       word-break:break-all; word-wrap:break-word;">
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    const table = $('#files-table').bootstrapTable({
+        // toolbar: '#toolbar',                //工具按钮用哪个容器
+        method: "get",
+        url: /*[[@{/getWatchedFiles}]]*/+"",       //使用thymeleaf获取url
+        striped: true,                      //是否显示行间隔色
+        cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
+        pagination: true,                   //是否显示分页（*）
+        sortable: true,                     //是否启用排序
+        sortOrder: "asc",                   //排序方式
+        rememberOrder: true,
+        serverSort: false,
+        // queryParams: 'queryParams',         //传递参数（*）
+        sidePagination: "client",           //分页方式：client客户端分页，server服务端分页（*）
+        pageNumber: 1,                       //初始化加载第一页，默认第一页
+        pageSize: 10,                       //每页的记录行数（*）
+        pageList: [10, 25, 50, 100],        //可供选择的每页的行数（*）
+        smartDisplay: true,
+        search: true,                      //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+        strictSearch: false,
+        showColumns: true,                 //是否显示所有的列
+        showRefresh: true,                 //是否显示刷新按钮
+        minimumCountColumns: 1,             //最少允许的列数
+        clickToSelect: true,                //是否启用点击选中行
+        // height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
+        uniqueId: "source",                     //每一行的唯一标识，一般为主键列
+        showToggle: true,                   //是否显示详细视图和列表视图的切换按钮
+        cardView: false,                    //是否显示详细视图
+        detailView: false,                   //是否显示父子表
+        rowStyle: 'rowStyle',
+        columns: [{
+            title: '路径',
+            field: 'path',
+            align: 'center',
+            sortable: true,
+        }, {
+            title: '类型',
+            field: 'type',
+            align: 'center',
+            sortable: true,
+            formatter: 'formatType',
+        }, {
+            title: '操作',
+            field: 'action',
+            align: 'center',
+            formatter: 'actionFormatter',
+        }]
+    });
+
+    // 行内样式
+    function rowStyle(row) {
+        // 这里有5个取值代表5中颜色['active', 'success', 'info', 'warning', 'danger'];
+        let strclass = "";
+        if (row.type === "file") {
+            strclass = 'success';
+        } else if (row.type === "dir") {
+            strclass = 'info';
+        }
+        return {classes: strclass}
+    }
+
+    // 格式化类型
+    function formatType(value) {
+        if (value === 'file')
+            return '文件';
+        if (value === 'dir')
+            return '文件夹';
+        return '-';
+    }
+
+    //操作栏的格式化
+    function actionFormatter(value, row) {
+        return '<a href="javascript:void(0)" onclick="confirmDelete(\'' + window.encodeURI(row.path) + '\',\'' + row.type +
+            '\')" data-toggle="tooltip" title="删除">' +
+            '<i class="glyphicon glyphicon-remove"></i></a>　'
+    }
+
+    // 取消任务
+    function confirmDelete(path, type) {
+        $('#delModal').modal('show');
+        $('#cancelMsg').html('是否删除监控[' + window.decodeURI(path) + ']?(无法恢复)');
+        $('#confirmButton').click(function () {
+            // 防止多次点击
+            $(this).off('click');
+            $.ajax({
+                type: "post",
+                url: /*[[@{/delWatchFiles}]]*/+"",    //使用thymeleaf获取url
+                async: false,
+                data: {"path": window.decodeURI(path), "type": type},
+                success: function (result) {
+                    if (result && result === 'success') {
+                        alert('删除成功');
+                        $('#delModal').modal('hide');
+                        table.bootstrapTable('refresh', {silent: true});
+                    } else {
+                        alert('删除失败\r\n' + result);
+                    }
+                },
+            });
+        });
+    }
+
+    // 添加任务文件\文件夹
+    function saveSetting() {
+        const param = $('#add-form').serialize();
+        $.ajax({
+            type: "post",
+            url: /*[[@{/addMissions}]]*/+"",    //使用thymeleaf获取url
+            async: false,
+            data: param,
+            success: function (result) {
+                if (result && result === 'success') {
+                    alert('添加成功');
+                    $('#myModal').modal('hide');
+                    table.bootstrapTable('refresh', {silent: true});
+                } else {
+                    alert('添加失败\r\n' + result);
+                }
+            },
+        });
+    }
+</script>
+</body>
+</html>
