@@ -8,9 +8,8 @@ import com.converter.converter.impl.WordConverter;
 import com.converter.exception.ConvertException;
 import com.converter.exception.FileException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.util.ResourceUtils;
 
+import java.io.InputStream;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
  * @author Evan
  */
 @Slf4j
-@DependsOn("customizeConfig")
 public abstract class AbstractConverter {
     static List<String> wordTypes = EnumSet.allOf(WordType.class).parallelStream().map(WordType::getType).distinct().collect(Collectors.toList());
     static List<String> cellTypes = EnumSet.allOf(CellType.class).parallelStream().map(CellType::getType).distinct().collect(Collectors.toList());
@@ -33,9 +31,11 @@ public abstract class AbstractConverter {
         try {
             log.debug("开始初始化AbstractConverter");
             // 载入授权文件
-            String path = ResourceUtils.getFile("classpath:static/license/license.lic").getAbsolutePath();
-            new com.aspose.words.License().setLicense(path);
-            new com.aspose.cells.License().setLicense(path);
+            InputStream inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
+            new com.aspose.words.License().setLicense(inputStream);
+            // input流不能重复读取, 所以需要重新获取
+            inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
+            new com.aspose.cells.License().setLicense(inputStream);
             // 设置字体目录
             String fontDir = CustomizeConfig.instance().getFontDir();
             com.aspose.words.FontSettings.getDefaultInstance().setFontsFolder(fontDir, false);
