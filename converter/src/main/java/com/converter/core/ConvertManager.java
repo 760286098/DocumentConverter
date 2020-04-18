@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 @EnableScheduling
-@DependsOn("redisUtils")
+@DependsOn({"redisUtils", "customizeConfig"})
 public class ConvertManager {
     /**
      * 任务执行线程池, 用于执行转换任务
