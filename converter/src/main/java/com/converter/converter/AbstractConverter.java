@@ -1,9 +1,14 @@
 package com.converter.converter;
 
+import com.aspose.cells.LoadOptions;
+import com.aspose.slides.PdfOptions;
+import com.aspose.words.PdfSaveOptions;
 import com.converter.config.CustomizeConfig;
 import com.converter.constant.CellType;
+import com.converter.constant.SlideType;
 import com.converter.constant.WordType;
 import com.converter.converter.impl.CellConverter;
+import com.converter.converter.impl.SlideConverter;
 import com.converter.converter.impl.WordConverter;
 import com.converter.exception.ConvertException;
 import com.converter.exception.FileException;
@@ -21,8 +26,54 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public abstract class AbstractConverter {
-    static List<String> wordTypes = EnumSet.allOf(WordType.class).parallelStream().map(WordType::getType).distinct().collect(Collectors.toList());
-    static List<String> cellTypes = EnumSet.allOf(CellType.class).parallelStream().map(CellType::getType).distinct().collect(Collectors.toList());
+    private static com.aspose.cells.LoadOptions cellLoadOptions
+            = new com.aspose.cells.LoadOptions();
+
+    private static com.aspose.words.PdfSaveOptions wordToPdfOptions
+            = new com.aspose.words.PdfSaveOptions();
+    private static com.aspose.cells.PdfSaveOptions cellToPdfOptions
+            = new com.aspose.cells.PdfSaveOptions();
+    private static com.aspose.slides.PdfOptions slideToPdfOptions
+            = new com.aspose.slides.PdfOptions();
+
+    private static List<String> wordTypes
+            = EnumSet.allOf(WordType.class)
+            .parallelStream()
+            .map(WordType::getType)
+            .distinct()
+            .collect(Collectors.toList());
+    private static List<String> cellTypes
+            = EnumSet.allOf(CellType.class)
+            .parallelStream()
+            .map(CellType::getType)
+            .distinct()
+            .collect(Collectors.toList());
+    private static List<String> slideTypes
+            = EnumSet.allOf(SlideType.class)
+            .parallelStream()
+            .map(SlideType::getType)
+            .distinct()
+            .collect(Collectors.toList());
+
+    static {
+        // =============================Word============================
+        // 设置启用超链
+        wordToPdfOptions.setCreateNoteHyperlinks(true);
+        // 减小内存消耗, 不过会增加处理时间
+        wordToPdfOptions.setMemoryOptimization(true);
+        // 优化输出, 不过可能影响结果准确性
+        wordToPdfOptions.setOptimizeOutput(true);
+
+        // =============================Cell============================
+        // 优化内存
+        cellLoadOptions.setMemorySetting(com.aspose.cells.MemorySetting.MEMORY_PREFERENCE);
+        // 将所有的列放入一页
+        cellToPdfOptions.setAllColumnsInOnePagePerSheet(true);
+
+        // =============================Slide===========================
+        // 显示隐藏的PPT
+        slideToPdfOptions.setShowHiddenSlides(true);
+    }
 
     /**
      * 初始化, 载入授权文件, 并设置字体目录
@@ -30,16 +81,21 @@ public abstract class AbstractConverter {
     public static void init() {
         try {
             log.debug("开始初始化AbstractConverter");
+            InputStream inputStream;
             // 载入授权文件
-            InputStream inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
+            inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
             new com.aspose.words.License().setLicense(inputStream);
             // input流不能重复读取, 所以需要重新获取
             inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
             new com.aspose.cells.License().setLicense(inputStream);
+            // input流不能重复读取, 所以需要重新获取
+            inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
+            new com.aspose.slides.License().setLicense(inputStream);
             // 设置字体目录
             String fontDir = CustomizeConfig.instance().getFontDir();
             com.aspose.words.FontSettings.getDefaultInstance().setFontsFolder(fontDir, false);
             com.aspose.cells.FontConfigs.setFontFolder(fontDir, false);
+            com.aspose.slides.FontsLoader.loadExternalFonts(new String[]{fontDir});
             log.debug("成功初始化AbstractConverter");
         } catch (Exception e) {
             if (CustomizeConfig.instance().isAllowWithoutLicense()) {
@@ -51,12 +107,11 @@ public abstract class AbstractConverter {
     }
 
     /**
-     * 感觉后缀名进行文档转换
+     * 根据文件后缀名获取对应的转换器
      *
      * @param sourceFilePath 源文件路径
-     * @param targetFilePath 目的路径
      */
-    public static void toConvert(String sourceFilePath, String targetFilePath) {
+    public static AbstractConverter getConverter(final String sourceFilePath) {
         AbstractConverter converter;
         String fileExtension = sourceFilePath.substring(sourceFilePath.lastIndexOf(".") + 1);
 
@@ -64,17 +119,54 @@ public abstract class AbstractConverter {
             converter = new WordConverter();
         } else if (cellTypes.contains(fileExtension.toUpperCase())) {
             converter = new CellConverter();
+        } else if (CustomizeConfig.instance().isEnableSlides()
+                && slideTypes.contains(fileExtension.toUpperCase())) {
+            converter = new SlideConverter();
         } else {
-            throw new FileException.FileTypeException(sourceFilePath);
+            throw new FileException.FileTypeException(fileExtension);
         }
-        converter.convert(sourceFilePath, targetFilePath);
+        return converter;
     }
 
     /**
-     * 抽象方法, 由子类实现
+     * Getter
+     */
+    public static LoadOptions getCellLoadOptions() {
+        return cellLoadOptions;
+    }
+
+    /**
+     * Getter
+     */
+    public static PdfSaveOptions getWordToPdfOptions() {
+        return wordToPdfOptions;
+    }
+
+    /**
+     * Getter
+     */
+    public static com.aspose.cells.PdfSaveOptions getCellToPdfOptions() {
+        return cellToPdfOptions;
+    }
+
+    /**
+     * Getter
+     */
+    public static PdfOptions getSlideToPdfOptions() {
+        return slideToPdfOptions;
+    }
+
+    /**
+     * 抽象方法, 用于执行转换任务, 由子类实现
      *
      * @param sourceFilePath 源文件路径
      * @param targetFilePath 目的路径
      */
-    protected abstract void convert(String sourceFilePath, String targetFilePath);
+    public abstract void convert(final String sourceFilePath,
+                                 final String targetFilePath);
+
+    /**
+     * 抽象方法, 用于中断任务, 由子类实现
+     */
+    public abstract void interrupt();
 }

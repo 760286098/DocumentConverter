@@ -1,17 +1,21 @@
 package com.converter.service;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.converter.config.CustomizeConfig;
 import com.converter.config.ThreadPoolConfig;
 import com.converter.core.ConvertManager;
 import com.converter.core.ConvertMission;
-import com.converter.pojo.ConvertInfo;
 import com.converter.utils.RedisUtils;
 import com.converter.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 主service类, 屏蔽细节, 对ConvertManager进一步封装
@@ -23,16 +27,11 @@ import java.util.*;
 @Service
 public class MainService {
     /**
-     * 配置分隔符
-     */
-    private final static String SEPARATOR = ",";
-
-    /**
      * 添加单个文件任务, 使用默认目的路径
      *
      * @param sourceFilePath 源文件路径
      */
-    public void addMission(String sourceFilePath) {
+    public void addMission(final String sourceFilePath) {
         log.debug("添加文件[{}], 使用默认目的路径", sourceFilePath);
         ConvertManager.addMission(sourceFilePath);
     }
@@ -43,7 +42,8 @@ public class MainService {
      * @param sourceFilePath 源文件路径
      * @param targetDirPath  目的路径
      */
-    public void addMission(String sourceFilePath, String targetDirPath) {
+    public void addMission(final String sourceFilePath,
+                           final String targetDirPath) {
         log.debug("添加文件[{}], 使用自定义目的路径[{}]", sourceFilePath, targetDirPath);
         ConvertManager.addMission(sourceFilePath, targetDirPath);
     }
@@ -53,7 +53,7 @@ public class MainService {
      *
      * @param sourceDirPath 源文件夹路径
      */
-    public void addMissions(String sourceDirPath) {
+    public void addMissions(final String sourceDirPath) {
         log.debug("添加文件夹[{}], 使用默认目的路径", sourceDirPath);
         ConvertManager.addMissions(sourceDirPath, false);
     }
@@ -64,20 +64,10 @@ public class MainService {
      * @param sourceDirPath 源文件夹路径
      * @param targetDirPath 目的路径
      */
-    public void addMissions(String sourceDirPath, String targetDirPath) {
+    public void addMissions(final String sourceDirPath,
+                            final String targetDirPath) {
         log.debug("添加文件夹[{}], 使用自定义目的路径[{}]", sourceDirPath, targetDirPath);
         ConvertManager.addMissions(sourceDirPath, targetDirPath, false);
-    }
-
-    /**
-     * 根据任务id获取任务
-     *
-     * @param id 任务id
-     * @return id对应任务
-     */
-    public ConvertMission getMission(Integer id) {
-        log.debug("获取任务[id={}]", id);
-        return ConvertManager.getMission(id);
     }
 
     /**
@@ -85,39 +75,24 @@ public class MainService {
      *
      * @param id 任务id
      */
-    public void cancelMissionById(Integer id) {
+    public void cancelMissionById(final Integer id) {
         ConvertMission mission = ConvertManager.getMission(id);
+        if (mission == null) {
+            throw new RuntimeException("任务已完成");
+        }
         log.debug("正在取消任务[{}]", mission.getConvertInfo().getSourceFilePath());
         mission.cancelMission();
     }
 
     /**
-     * 取消所有已提交任务
-     */
-    public void cancelAllMissions() {
-        log.debug("取消所有任务");
-        ConvertManager.cancelAllMissions();
-        log.debug("成功取消所有任务");
-    }
-
-    /**
-     * 获取所有任务的集合, 若是已完成任务, value就为-1, 否则为任务id, 可用于取消任务
-     *
-     * @return 任务集合
-     */
-    public HashMap<ConvertInfo, Integer> getAllConvertInfo() {
-        log.debug("获取所有任务map集合");
-        return ConvertManager.getAllConvertInfo();
-    }
-
-    /**
      * 获取所有任务的集合, 若是已完成任务, value就为-1, 否则为任务id, 可用于取消任务(返回json格式字符串)
      *
+     * @param cache true代表允许缓存, false代表禁止缓存
      * @return 任务集合的json格式字符串
      */
-    public String getAllConvertInfoOfJson() {
+    public String getAllConvertInfoOfJson(final boolean cache) {
         log.debug("获取所有任务json格式字符串");
-        return ConvertManager.getAllConvertInfoOfJson();
+        return ConvertManager.getAllConvertInfoOfJson(cache);
     }
 
     /**
@@ -125,61 +100,61 @@ public class MainService {
      *
      * @return 自定义配置
      */
-    public String getConfig() {
+    public Map<String, String> getConfig() {
         log.debug("获取自定义配置");
-        StringBuilder configs = new StringBuilder();
+        Map<String, String> map = new HashMap<>(32);
+
         // 获取自定义配置
         CustomizeConfig config = CustomizeConfig.instance();
-        configs.append(config.isAllowWithoutLicense()).append(SEPARATOR)
-                .append(config.getRedisFileKey()).append(SEPARATOR)
-                .append(config.getRedisDirKey()).append(SEPARATOR)
-                .append(config.getRedisInfoKey()).append(SEPARATOR)
-                .append(config.getTargetDirPath()).append(SEPARATOR)
-                .append(config.getMaxRetries()).append(SEPARATOR)
-                .append(config.getMissionTimeout()).append(SEPARATOR);
+        map.put("license", String.valueOf(config.isAllowWithoutLicense()));
+        map.put("fileKey", config.getRedisFileKey());
+        map.put("dirKey", config.getRedisDirKey());
+        map.put("target", new File(config.getTargetDirPath()).getAbsolutePath());
+        map.put("upload", new File(config.getUploadPath()).getAbsolutePath());
+        map.put("maxRetry", String.valueOf(config.getMaxRetries()));
+        map.put("timeout", String.valueOf(config.getMissionTimeout()));
+        map.put("enableSlides", String.valueOf(config.isEnableSlides()));
+
         // 获取线程池配置
-        ThreadPoolConfig poolConfig = ThreadPoolConfig.instance();
-        configs.append(poolConfig.getCorePoolSize()).append(SEPARATOR)
-                .append(poolConfig.getMaxPoolSize()).append(SEPARATOR)
-                .append(poolConfig.getQueueCapacity()).append(SEPARATOR)
-                .append(poolConfig.getPrefix()).append(SEPARATOR)
-                .append(poolConfig.getKeepAliveSeconds());
-        return configs.toString();
+        ThreadPoolTaskExecutor pool = ConvertManager.getThreadPoolTaskExecutor();
+        map.put("corePool", String.valueOf(pool.getCorePoolSize()));
+        map.put("maxPool", String.valueOf(pool.getMaxPoolSize()));
+        map.put("queueCapacity", String.valueOf(ThreadPoolConfig.instance().getQueueCapacity()));
+        map.put("prefix", pool.getThreadNamePrefix());
+        map.put("alive", String.valueOf(pool.getKeepAliveSeconds()));
+
+        return map;
     }
 
     /**
      * 修改自定义配置
      *
-     * @param configString 自定义配置
+     * @param map 配置信息
      */
-    public void setConfig(String configString) {
-        log.debug("修改自定义配置{}", configString);
-        // 使用分隔符[,]分割配置字符串
-        String[] configs = configString.split(SEPARATOR);
+    public void setConfig(final Map<String, String> map) {
+        log.debug("修改自定义配置{}", map.toString());
         // 修改自定义配置
         CustomizeConfig config = CustomizeConfig.instance();
-        config.setAllowWithoutLicense("true".equals(configs[0]));
-        config.setRedisFileKey(configs[1]);
-        config.setRedisDirKey(configs[2]);
-        config.setRedisInfoKey(configs[3]);
-        config.setTargetDirPath(configs[4]);
-        config.setMaxRetries(Integer.valueOf(configs[5]));
-        config.setMissionTimeout(Integer.valueOf(configs[6]));
+        config.setTargetDirPath(map.get("target"));
+        config.setUploadPath(map.get("upload"));
+        config.setMaxRetries(Integer.valueOf(map.get("maxRetry")));
+        config.setMissionTimeout(Integer.valueOf(map.get("timeout")));
+        config.setEnableSlides("true".equals(map.get("enableSlides")));
         // 修改线程池配置
         ThreadPoolTaskExecutor pool = ConvertManager.getThreadPoolTaskExecutor();
-        pool.setCorePoolSize(Integer.parseInt(configs[7]));
-        pool.setMaxPoolSize(Integer.parseInt(configs[8]));
-        pool.setQueueCapacity(Integer.parseInt(configs[9]));
-        pool.setThreadNamePrefix(configs[10]);
-        pool.setKeepAliveSeconds(Integer.parseInt(configs[11]));
-        ConvertManager.getThreadPoolTaskScheduler().setPoolSize(Integer.parseInt(configs[7]));
-        // 写入自定义线程池配置
+        pool.setCorePoolSize(Integer.parseInt(map.get("corePool")));
+        pool.setMaxPoolSize(Integer.parseInt(map.get("maxPool")));
+        pool.setThreadNamePrefix(map.get("prefix"));
+        pool.setKeepAliveSeconds(Integer.parseInt(map.get("alive")));
+        ConvertManager.getThreadPoolTaskScheduler()
+                .setPoolSize(Integer.parseInt(map.get("maxPool"))
+                        + Integer.parseInt(map.get("queueCapacity")) + 5);
+        // 修改线程池Config中配置
         ThreadPoolConfig poolConfig = ThreadPoolConfig.instance();
-        poolConfig.setCorePoolSize(Integer.parseInt(configs[7]));
-        poolConfig.setMaxPoolSize(Integer.parseInt(configs[8]));
-        poolConfig.setQueueCapacity(Integer.parseInt(configs[9]));
-        poolConfig.setPrefix(configs[10]);
-        poolConfig.setKeepAliveSeconds(Integer.parseInt(configs[11]));
+        poolConfig.setCorePoolSize(Integer.parseInt(map.get("corePool")));
+        poolConfig.setMaxPoolSize(Integer.parseInt(map.get("maxPool")));
+        poolConfig.setPrefix(map.get("prefix"));
+        poolConfig.setKeepAliveSeconds(Integer.parseInt(map.get("alive")));
     }
 
     /**
@@ -191,23 +166,70 @@ public class MainService {
         log.debug("获取Redis缓存中的文件和文件夹");
         Set<Object> files = RedisUtils.sGet(CustomizeConfig.instance().getRedisFileKey());
         Set<Object> dirs = RedisUtils.sGet(CustomizeConfig.instance().getRedisDirKey());
-        List<Map<String, String>> list = new ArrayList<>();
-        if (files != null) {
-            for (Object file : files) {
-                Map<String, String> map = new HashMap<>(4);
-                map.put("path", (String) file);
-                map.put("type", "file");
-                list.add(map);
-            }
-        }
+        JSONArray result = new JSONArray();
         if (dirs != null) {
             for (Object dir : dirs) {
-                Map<String, String> map = new HashMap<>(4);
-                map.put("path", (String) dir);
-                map.put("type", "dir");
-                list.add(map);
+                JSONObject item = new JSONObject();
+                item.put("path", dir);
+                item.put("type", "dir");
+                result.add(item);
             }
         }
-        return StringUtils.toJsonString(list);
+        if (files != null) {
+            for (Object file : files) {
+                JSONObject item = new JSONObject();
+                item.put("path", file);
+                item.put("type", "file");
+                result.add(item);
+            }
+        }
+        return StringUtils.toJsonString(result);
+    }
+
+    /**
+     * 获取线程池信息
+     *
+     * @return 线程池信息
+     */
+    public String getThreadsInfo() {
+        JSONArray result = new JSONArray();
+        // 转换任务线程组
+        ThreadGroup converter = ConvertManager.getThreadPoolTaskExecutor().getThreadGroup();
+        dealWithThreadGroup(result, converter, ThreadPoolConfig.instance().getPrefix());
+        // 流程控制线程组
+        ThreadGroup scheduler = ConvertManager.getThreadPoolTaskScheduler().getThreadGroup();
+        dealWithThreadGroup(result, scheduler, "scheduler");
+        // json格式字符串
+        return StringUtils.toJsonString(result);
+    }
+
+    /**
+     * 将threadGroup中所有线程信息加入result
+     *
+     * @param result      结果
+     * @param threadGroup group
+     * @param prefix      线程前缀
+     */
+    private void dealWithThreadGroup(final JSONArray result,
+                                     final ThreadGroup threadGroup,
+                                     final String prefix) {
+        if (threadGroup != null) {
+            int count = threadGroup.activeCount();
+            Thread[] threads = new Thread[count];
+            threadGroup.enumerate(threads);
+
+            for (int i = 0; i < count; i++) {
+                String name = threads[i].getName();
+                if (name.startsWith(prefix)) {
+                    JSONObject item = new JSONObject();
+                    StackTraceElement[] stackTrace = threads[i].getStackTrace();
+                    item.put("id", threads[i].getId());
+                    item.put("name", name);
+                    item.put("state", threads[i].getState());
+                    item.put("stack", stackTrace.length == 0 ? "" : stackTrace[0].toString());
+                    result.add(item);
+                }
+            }
+        }
     }
 }

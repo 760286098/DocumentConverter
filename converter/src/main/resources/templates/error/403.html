@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html id="loading" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
+    <link rel="icon" th:href="@{/static/favicon.ico}" type="image/x-icon">
+    <title>文档转换器</title>
+    <link rel="stylesheet" th:href="@{/static/css/base/error.style.min.css}">
+    <script th:src="@{/static/js/error/error.min.js}"></script>
+</head>
+<body class="not-found">
+<div class="container">
+    <div class="row">
+        <div class="col-sm-5">
+            <div class="ghost">
+                <a class="body" th:href="@{/}">
+                    <i class="icon icon-flickr"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-sm-7">
+            <h2>403 Forbidden</h2>
+            <p>用户未登录, 尝试<a th:href="@{/login}">登录</a>?</p>
+        </div>
+    </div>
+</div>
+<script th:src="@{/static/js/error/error.custom.min.js}"></script>
+</body>
+</html>

@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en" th:with="type='setting'" xmlns:th="http://www.thymeleaf.org">
 <header th:replace="~{admin/commons::header}"></header>
+<style>
+    .form-group {
+        margin-bottom: 10px;
+    }
+</style>
 <body class="fixed-left">
 <div id="wrapper">
     <div th:replace="~{admin/commons::sidebar}"></div>
     <div class="content-page">
-        <div class="content">
+        <div class="content" style="margin-bottom: 0;margin-top: 45px">
             <div class="container">
-                <form action="#" class="form-horizontal" id="setting-form" onsubmit="saveSetting();return false;"
+                <form action="javascript:void(0);" class="form-horizontal" id="setting-form"
+                      onsubmit="saveSetting();return false;"
                       role="form">
                     <div class="form-group">
                         <label class="col-sm-2 control-label" for="license">允许没有授权文件</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="license" name="license" readonly="readonly"
-                                   th:value="${setting.split(',')[0]}"
+                                   th:value="${setting.license}?'允许':'禁止'"
                                    type="text">
                         </div>
                     </div>
@@ -21,7 +27,7 @@
                         <label class="col-sm-2 control-label" for="fileKey">文件名key</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="fileKey" name="fileKey" readonly="readonly"
-                                   th:value="${setting.split(',')[1]}"
+                                   th:value="${setting.fileKey}"
                                    type="text">
                         </div>
                     </div>
@@ -29,15 +35,7 @@
                         <label class="col-sm-2 control-label" for="dirKey">目录名key</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="dirKey" name="dirKey" readonly="readonly"
-                                   th:value="${setting.split(',')[2]}"
-                                   type="text">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="col-sm-2 control-label" for="infoKey">转换信息key</label>
-                        <div class="col-sm-10">
-                            <input class="form-control" id="infoKey" name="infoKey" readonly="readonly"
-                                   th:value="${setting.split(',')[3]}"
+                                   th:value="${setting.dirKey}"
                                    type="text">
                         </div>
                     </div>
@@ -47,32 +45,50 @@
                             <input class="form-control" id="target" name="target"
                                    pattern='[\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*'
                                    required="required"
-                                   th:value="${setting.split(',')[4]}"
+                                   th:value="${setting.target}"
                                    type="text">
-
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="upload">默认上传目录</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" id="upload" name="upload"
+                                   pattern='[\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*'
+                                   required="required"
+                                   th:value="${setting.upload}"
+                                   type="text">
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-2 control-label" for="maxRetry">最大重试次数</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="maxRetry" name="maxRetry" required="required"
-                                   th:value="${setting.split(',')[5]}"
+                                   th:value="${setting.maxRetry}"
                                    type="number">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-sm-2 control-label" for="timeout">任务超时时间（秒）</label>
+                        <label class="col-sm-2 control-label" for="timeout">任务超时时间(秒)</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="timeout" name="timeout" required="required"
-                                   th:value="${setting.split(',')[6]}"
+                                   th:value="${setting.timeout}"
                                    type="number">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="enableSlides">允许转换Slides(测试功能)</label>
+                        <div class="col-sm-10">
+                            <select class="form-control" id="enableSlides" name="enableSlides" required="required">
+                                <option th:selected="${setting.enableSlides}" value="true">允许</option>
+                                <option th:selected="${!setting.enableSlides}" value="false">禁止</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="col-sm-2 control-label" for="corePool">核心线程数</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="corePool" name="corePool" required="required"
-                                   th:value="${setting.split(',')[7]}"
+                                   th:value="${setting.corePool}"
                                    type="number">
                         </div>
                     </div>
@@ -80,15 +96,15 @@
                         <label class="col-sm-2 control-label" for="maxPool">最大线程数</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="maxPool" name="maxPool" required="required"
-                                   th:value="${setting.split(',')[8]}"
+                                   th:value="${setting.maxPool}"
                                    type="number">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-sm-2 control-label" for="queueCapacity">等待队列长度(可能无效,不建议修改)</label>
+                        <label class="col-sm-2 control-label" for="queueCapacity">等待队列长度</label>
                         <div class="col-sm-10">
-                            <input class="form-control" id="queueCapacity" name="queueCapacity" required="required"
-                                   th:value="${setting.split(',')[9]}"
+                            <input class="form-control" id="queueCapacity" name="queueCapacity" readonly="readonly"
+                                   th:value="${setting.queueCapacity}"
                                    type="number">
                         </div>
                     </div>
@@ -96,15 +112,15 @@
                         <label class="col-sm-2 control-label" for="prefix">转换线程前缀</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="prefix" name="prefix" required="required"
-                                   th:value="${setting.split(',')[10]}"
+                                   th:value="${setting.prefix}"
                                    type="text">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-sm-2 control-label" for="alive">线程最大空闲时间（秒）</label>
+                        <label class="col-sm-2 control-label" for="alive">线程最大空闲时间(秒)</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="alive" name="alive" required="required"
-                                   th:value="${setting.split(',')[11]}"
+                                   th:value="${setting.alive}"
                                    type="number">
                         </div>
                     </div>
@@ -134,6 +150,9 @@
                     alert('保存失败\r\n' + result);
                 }
             },
+            error: function () {
+                alert('保存失败');
+            }
         });
     }
 </script>

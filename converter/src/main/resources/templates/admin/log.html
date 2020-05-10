@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" th:with="type='log'" xmlns:th="http://www.thymeleaf.org">
+<header th:replace="~{admin/commons::header}"></header>
+<script th:src="@{/static/js/websocket/sockjs.min.js}"></script>
+<script th:src="@{/static/js/websocket/stomp.min.js}"></script>
+<link rel="stylesheet" th:href="@{/static/css/mine/log.style.css}">
+<body class="fixed-left">
+<div id="wrapper">
+    <div th:replace="~{admin/commons::sidebar}"></div>
+    <div class="content-page">
+        <div class="content" style="margin-bottom: 0;margin-top: 45px">
+            <div class="container">
+                <p>
+                    <span style="font-size: 30px">实时日志展示</span>
+                    <span style="font-size: 20px">(本地日志文件效果更好)</span>
+                    <button class="btn btn-primary" onclick="autoScroll()"
+                            style="margin-left: 50px;margin-bottom: 5px;">
+                        滚动
+                    </button>
+                    <button class="btn btn-info" onclick="refreshLog()"
+                            style="margin-bottom: 5px;">
+                        刷新
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearLog()"
+                            style="margin-bottom: 5px;">
+                        清屏
+                    </button>
+                </p>
+                <div id="log-container">
+                    <div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    <!-- 日志实时推送业务处理 -->
+    let stompClient = null;
+    let scroll = true;
+
+    function openSocket() {
+        if (stompClient == null) {
+            if ($("#log-container").find("span").length === 0) {
+                $("#log-container div").after("<span id='log-tip'>连接成功, 等待日志输出...</span>");
+            }
+            // 使用thymeleaf获取websocket路径
+            const socket = new SockJS(/*[[@{/websocket}]]*/+"");
+            stompClient = Stomp.over(socket);
+            // 关闭调试信息
+            stompClient.debug = null;
+            stompClient.connect(
+                {/*url附加参数*/},
+                function () {
+                    stompClient.subscribe('/Logger', function (event) {
+                        const logContent = JSON.parse(event.body);
+
+                        const logTimestamp = "<span class='log-timestamp'>" + logContent.timestamp + "</span>";
+                        let logLevel;
+                        const level = logContent.level;
+                        switch (level) {
+                            case 'INFO':
+                                logLevel = "<span class='log-level level-info'>" + level + "</span>";
+                                break;
+                            case 'DEBUG':
+                                logLevel = "<span class='log-level level-debug'>" + level + "</span>";
+                                break;
+                            case 'WARN':
+                                logLevel = "<span class='log-level level-warn'>" + level + "</span>";
+                                break;
+                            case 'ERROR':
+                                logLevel = "<span class='log-level level-error'>" + level + "</span>";
+                                break;
+                        }
+                        const logThreadName = "<span class='log-thread-name'>" + logContent.threadName + "</span>";
+                        const logClassName = "<span class='log-class-name'>" + logContent.className + "</span>";
+                        const logMessage = "<span class='log-message'>" + logContent.body.replace(" ", "&emsp;") + "</span>";
+                        // 日志item
+                        const logItem =
+                            "<p class='log-item'>"
+                            + logTimestamp + "&emsp;&emsp;"
+                            + logLevel + "&emsp;---&emsp;["
+                            + logThreadName + "]&emsp;"
+                            + logClassName + "&emsp;:&emsp;"
+                            + logMessage
+                            + "</p>";
+                        $("#log-container div").append(logItem);
+                        //自适应高度
+                        if (scroll) {
+                            const container = document.getElementById('log-container');
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    });
+                });
+        }
+    }
+
+    // 关闭websocket
+    function closeSocket() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
+    }
+
+    // 开启/关闭自动滚动
+    function autoScroll() {
+        scroll = !scroll;
+    }
+
+    // 刷新
+    function refreshLog() {
+        closeSocket();
+        openSocket();
+        alert("刷新成功");
+    }
+
+    // 清屏
+    function clearLog() {
+        $("#log-container div").html("");
+    }
+
+    // 窗口加载时打开websocket
+    window.onload = function () {
+        openSocket();
+    };
+
+    // 在离开窗口时关闭websocket
+    window.onbeforeunload = function () {
+        closeSocket();
+    };
+</script>
+</body>
+</html>

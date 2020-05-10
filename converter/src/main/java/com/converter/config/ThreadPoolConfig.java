@@ -3,13 +3,14 @@ package com.converter.config;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.FutureTask;
 
 /**
  * 一、ThreadPoolExecutor的重要参数
@@ -95,15 +96,15 @@ public class ThreadPoolConfig {
     /**
      * 核心线程数
      */
-    private Integer corePoolSize = 50;
+    private Integer corePoolSize = Runtime.getRuntime().availableProcessors();
     /**
      * 最大线程数
      */
-    private Integer maxPoolSize = 100;
+    private Integer maxPoolSize = Runtime.getRuntime().availableProcessors() + 1;
     /**
      * 队列大小
      */
-    private Integer queueCapacity = 200;
+    private Integer queueCapacity = 50;
     /**
      * 线程池前缀
      */
@@ -120,8 +121,15 @@ public class ThreadPoolConfig {
         return threadPoolConfig;
     }
 
-    @Autowired
-    public void init(ThreadPoolConfig threadPoolConfig) {
+    /**
+     * 获取线程池最大容量
+     */
+    public static Integer getCapacity() {
+        return threadPoolConfig.maxPoolSize + threadPoolConfig.queueCapacity;
+    }
+
+    @Autowired()
+    public void init(final @Qualifier("threadPoolConfig") ThreadPoolConfig threadPoolConfig) {
         log.debug("开始初始化ThreadPoolConfig");
         ThreadPoolConfig.threadPoolConfig = threadPoolConfig;
         log.debug("成功初始化ThreadPoolConfig");
@@ -135,34 +143,49 @@ public class ThreadPoolConfig {
         log.debug("开始注册bean(ThreadPoolConfig.threadPoolTaskExecutor)");
         // 执行顺序: 核心线程->等待队列->最大线程->RejectedExecutionHandler
         ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
+        // 核心线程数
         pool.setCorePoolSize(corePoolSize);
-        pool.setAllowCoreThreadTimeOut(true);
+        // 最大线程数
         pool.setMaxPoolSize(maxPoolSize);
+        // 等待队列
         pool.setQueueCapacity(queueCapacity);
+        // 线程前缀
         pool.setThreadNamePrefix(prefix);
+        // 允许线程空闲时间
         pool.setKeepAliveSeconds(keepAliveSeconds);
-        // 拒绝策略, 正常情况下用不上
-        pool.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        // 允许核心线程超时
+        pool.setAllowCoreThreadTimeOut(true);
+        // 设置线程组名
+        pool.setThreadGroupName("converter");
+        // 拒绝策略, 取消任务, 等待下一轮扫描, 正常情况不会触发
+        pool.setRejectedExecutionHandler((r, executor) -> {
+            log.info("线程池已满, 等待下一轮扫描[threadPoolRejectedException]");
+            if (r instanceof FutureTask) {
+                ((FutureTask<?>) r).cancel(true);
+            }
+        });
+        // 初始化, 使设置生效
         pool.initialize();
         log.debug("成功注册bean(ThreadPoolConfig.threadPoolTaskExecutor)");
         return pool;
     }
 
     /**
-     * 配置Schedule线程池, 用于给转换线程设置timeout
+     * 配置Schedule线程池, 用于控制任务流程
      */
     @Bean("threadPoolTaskScheduler")
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
         log.debug("开始注册bean(ThreadPoolConfig.threadPoolTaskScheduler)");
-        ThreadPoolTaskScheduler executor = new ThreadPoolTaskScheduler();
-        // 这个是setCorePoolSize, maxPoolSize为Integer.MAX_VALUE
-        executor.setPoolSize(corePoolSize);
-        executor.setThreadNamePrefix("scheduler-");
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(60);
-        // 拒绝策略, 正常情况下用不上
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        // 这个是setCorePoolSize, queueCapacity可递增至Integer.MAX_VALUE, maxPoolSize为Integer.MAX_VALUE(maxPoolSize无效)
+        scheduler.setPoolSize(maxPoolSize + queueCapacity + 5);
+        // 线程前缀
+        scheduler.setThreadNamePrefix("scheduler-");
+        // 设置线程组名
+        scheduler.setThreadGroupName("scheduler");
+        // 初始化, 使设置生效
+        scheduler.initialize();
         log.debug("成功注册bean(ThreadPoolConfig.threadPoolTaskScheduler)");
-        return executor;
+        return scheduler;
     }
 }

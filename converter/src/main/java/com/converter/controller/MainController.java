@@ -1,14 +1,21 @@
 package com.converter.controller;
 
 import com.converter.config.CustomizeConfig;
+import com.converter.core.ConvertManager;
 import com.converter.pojo.ConvertInfo;
 import com.converter.service.MainService;
+import com.converter.utils.FileUtils;
 import com.converter.utils.RedisUtils;
-import com.converter.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.authc.AuthenticationException;
+import org.apache.shiro.authc.UsernamePasswordToken;
+import org.apache.shiro.subject.Subject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -16,9 +23,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 主Controller类
@@ -36,11 +44,22 @@ public class MainController {
      * 表明添加的是文件夹
      */
     private static final String TYPE_DIR = "dir";
+    /**
+     * service对象
+     */
     private final MainService service;
 
     @Autowired
-    public MainController(MainService service) {
+    public MainController(@Qualifier("mainService") final MainService service) {
         this.service = service;
+    }
+
+    /**
+     * 跳转到登录页
+     */
+    @GetMapping("login")
+    public String login() {
+        return "admin/login";
     }
 
     /**
@@ -60,14 +79,30 @@ public class MainController {
     }
 
     /**
+     * 跳转到线程信息页
+     */
+    @GetMapping("/thread")
+    public String thread() {
+        return "admin/thread";
+    }
+
+    /**
+     * 跳转到日志页
+     */
+    @GetMapping("/log")
+    public String log() {
+        return "admin/log";
+    }
+
+    /**
      * 跳转到设置页
      */
     @GetMapping("/setting")
-    public String setting(HttpServletRequest request) {
+    public String setting(final HttpServletRequest request) {
         try {
             request.setAttribute("setting", service.getConfig());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("获取配置失败", e);
         }
         return "admin/setting";
     }
@@ -77,12 +112,12 @@ public class MainController {
      */
     @GetMapping("/getInfo")
     @ResponseBody
-    public String getInfo() {
+    public String getInfo(final @RequestParam boolean cache) {
         String info = null;
         try {
-            info = service.getAllConvertInfoOfJson();
+            info = service.getAllConvertInfoOfJson(cache);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("获取信息失败", e);
         }
         return info;
     }
@@ -97,9 +132,53 @@ public class MainController {
         try {
             watchedFiles = service.getWatchedFiles();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("获取监控列表失败", e);
         }
         return watchedFiles;
+    }
+
+    /**
+     * 获取线程池信息
+     */
+    @GetMapping("/getThreadsInfo")
+    @ResponseBody
+    public String getThreadsInfo() {
+        String threadsInfo = null;
+        try {
+            threadsInfo = service.getThreadsInfo();
+        } catch (Exception e) {
+            log.error("获取线程池信息失败", e);
+        }
+        return threadsInfo;
+    }
+
+    /**
+     * 登录
+     */
+    @PostMapping("/login")
+    public String login(final HttpServletRequest request) {
+        String[] username = request.getParameterMap().get("username");
+        String[] password = request.getParameterMap().get("password");
+        String[] remember = request.getParameterMap().get("rememberMe");
+        if (username == null || password == null) {
+            request.setAttribute("msg", "用户名和密码不能为空");
+            return "admin/login";
+        }
+
+        UsernamePasswordToken token = new UsernamePasswordToken(username[0], password[0]);
+        token.setRememberMe(remember != null);
+        Subject subject = SecurityUtils.getSubject();
+        try {
+            subject.login(token);
+            log.debug("登录成功, 用户名: {}", username[0]);
+            return "redirect:index";
+        } catch (AuthenticationException e) {
+            log.error("登录错误: {}", e.getMessage());
+            token.clear();
+            request.setAttribute("username", username[0]);
+            request.setAttribute("msg", "用户名或密码错误");
+            return "admin/login";
+        }
     }
 
     /**
@@ -107,20 +186,37 @@ public class MainController {
      */
     @PostMapping("/addMissions")
     @ResponseBody
-    public String addMissions(HttpServletRequest request) {
+    public String addMissions(final @RequestParam("file") MultipartFile file,
+                              final HttpServletRequest request) {
         try {
             Map<String, String[]> map = request.getParameterMap();
             String sourcePath = map.get("sourcePath")[0].trim();
             String targetPath = map.get("targetPath")[0].trim();
             String type = map.get("type")[0].trim();
+            boolean useDefaultTargetDir = "".equals(targetPath);
+            // 如果上传文件非空, 则使用上传文件
+            if (!file.isEmpty()) {
+                String fileName = System.currentTimeMillis() + ConvertManager.UPLOAD + file.getOriginalFilename();
+                String filePath = FileUtils.dealWithDir(CustomizeConfig.instance().getUploadPath()) + fileName;
+                file.transferTo(new File(filePath));
+                if (useDefaultTargetDir) {
+                    service.addMission(filePath);
+                } else {
+                    service.addMission(filePath, targetPath);
+                }
+                return "success";
+            }
+            // 添加文件
             if (TYPE_FILE.equals(type)) {
-                if ("".equals(targetPath)) {
+                if (useDefaultTargetDir) {
                     service.addMission(sourcePath);
                 } else {
                     service.addMission(sourcePath, targetPath);
                 }
-            } else if (TYPE_DIR.equals(type)) {
-                if ("".equals(targetPath)) {
+            }
+            // 添加文件夹
+            else if (TYPE_DIR.equals(type)) {
+                if (useDefaultTargetDir) {
                     service.addMissions(sourcePath);
                 } else {
                     service.addMissions(sourcePath, targetPath);
@@ -140,11 +236,15 @@ public class MainController {
      */
     @PostMapping("/setting")
     @ResponseBody
-    public String setSettings(HttpServletRequest request) {
+    public String setSettings(final HttpServletRequest request) {
         try {
-            String setting = request.getParameterMap().values().stream().map(s -> s[0]).collect(Collectors.joining(","));
-            service.setConfig(setting);
-            log.info("成功修改配置: {}", setting);
+            Map<String, String> map = new HashMap<>(16);
+            Set<Map.Entry<String, String[]>> entries = request.getParameterMap().entrySet();
+            for (Map.Entry<String, String[]> entry : entries) {
+                map.put(entry.getKey(), entry.getValue()[0]);
+            }
+            service.setConfig(map);
+            log.info("成功修改配置: {}", map.toString());
             return "success";
         } catch (Exception e) {
             log.error("MainController修改设置错误: {}", e.getMessage());
@@ -157,11 +257,11 @@ public class MainController {
      */
     @PostMapping("/cancelById")
     @ResponseBody
-    public String cancelById(HttpServletRequest request) {
+    public String cancelById(final HttpServletRequest request) {
         try {
             String id = request.getParameterMap().get("id")[0];
             service.cancelMissionById(Integer.valueOf(id));
-            log.info("成功取消任务{}", id);
+            log.debug("成功取消任务{}", id);
             return "success";
         } catch (Exception e) {
             log.error("MainController取消任务错误: {}", e.getMessage());
@@ -175,7 +275,9 @@ public class MainController {
      * @param filename 文件名
      */
     @RequestMapping("/preview")
-    public void readPdf(@RequestParam String filename, @RequestParam String source, HttpServletResponse response) {
+    public void readPdf(final @RequestParam String filename,
+                        final @RequestParam String source,
+                        final HttpServletResponse response) {
         try {
             if (verify(source, filename)) {
                 log.debug("预览文件{}", filename);
@@ -190,10 +292,11 @@ public class MainController {
         } catch (Exception e) {
             log.error("MainController预览文件[{}]错误: {}", filename, e.toString());
         }
+        // 如果验证失败, 则跳转至404页面
         try {
             response.sendRedirect("error/404");
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 
@@ -204,17 +307,13 @@ public class MainController {
      * @param target 目的文件路径
      * @return true代表合理
      */
-    private boolean verify(String source, String target) {
-        Set<Object> objects = RedisUtils.sGet(CustomizeConfig.instance().getRedisInfoKey());
-        if (objects != null) {
-            for (Object object : objects) {
-                ConvertInfo convertInfo = StringUtils.parseJsonString((String) object, ConvertInfo.class);
-                if (convertInfo == null) {
-                    continue;
-                }
-                if (convertInfo.getSourceFilePath().equals(source) && convertInfo.getTargetFilePath().equals(target)) {
-                    return true;
-                }
+    private boolean verify(final String source,
+                           final String target) {
+        List<ConvertInfo> finishedInfo = ConvertManager.getFinishedInfo();
+        for (ConvertInfo convertInfo : finishedInfo) {
+            if (convertInfo.getSourceFilePath().equals(source)
+                    && convertInfo.getTargetFilePath().equals(target)) {
+                return true;
             }
         }
         return false;
@@ -225,7 +324,7 @@ public class MainController {
      */
     @RequestMapping("/delWatchFiles")
     @ResponseBody
-    public String delWatchFiles(HttpServletRequest request) {
+    public String delWatchFiles(final HttpServletRequest request) {
         try {
             String path = request.getParameterMap().get("path")[0];
             String type = request.getParameterMap().get("type")[0];

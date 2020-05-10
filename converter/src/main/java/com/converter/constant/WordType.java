@@ -14,19 +14,20 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum WordType {
     DOC("DOC"),
-    DOCX("DOCX"),
-    HTML("HTML"),
-    MHT("MHT"),
-    MHTML("MHTML"),
     DOT("DOT"),
+    DOCX("DOCX"),
     DOCM("DOCM"),
     DOTX("DOTX"),
     DOTM("DOTM"),
     RTF("RTF"),
+    HTML("HTML"),
+    MHT("MHT"),
+    MHTML("MHTML"),
     MOBI("MOBI"),
     ODT("ODT"),
     OTT("OTT"),
-    TXT("TXT");
+    TXT("TXT"),
+    MD("MD");
 
     /**
      * 文件类型

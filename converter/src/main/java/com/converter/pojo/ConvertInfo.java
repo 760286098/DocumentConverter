@@ -2,9 +2,12 @@ package com.converter.pojo;
 
 import com.alibaba.fastjson.annotation.JSONField;
 import com.converter.constant.ConvertStatus;
+import com.converter.core.ConvertManager;
 import com.converter.utils.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+
+import java.io.File;
 
 /**
  * 转换信息
@@ -28,7 +31,7 @@ public class ConvertInfo {
      * 文件大小
      */
     @JSONField(name = "size", ordinal = 3)
-    private String fileSize;
+    private Long fileSize;
     /**
      * 任务加入队列时间
      */
@@ -60,16 +63,27 @@ public class ConvertInfo {
     @JSONField(name = "exceptions", ordinal = 9)
     private String exceptions;
 
-    public ConvertInfo(Long joinTime, String sourceFilePath, String targetFilePath, String fileSize) {
-        this.joinTime = joinTime;
+    public ConvertInfo(final String sourceFilePath,
+                       final String targetFilePath) {
+        this.joinTime = System.currentTimeMillis();
         this.startTime = 0L;
         this.endTime = 0L;
         this.sourceFilePath = sourceFilePath;
         this.targetFilePath = targetFilePath;
-        this.fileSize = fileSize;
+        this.fileSize = new File(sourceFilePath).length();
         this.status = ConvertStatus.WAIT_OUTSIDE;
         this.retry = 0;
         this.exceptions = "";
+    }
+
+    /**
+     * 修改ConvertStatus的同时修改ConvertManager的modify状态
+     *
+     * @param status 修改后的状态
+     */
+    public void setStatus(final ConvertStatus status) {
+        this.status = status;
+        ConvertManager.modify();
     }
 
     /**

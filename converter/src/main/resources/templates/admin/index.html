@@ -1,14 +1,24 @@
 <!DOCTYPE html>
 <html lang="en" th:with="type='list'" xmlns:th="http://www.thymeleaf.org">
 <header th:replace="~{admin/commons::header}"></header>
-<link rel="stylesheet" th:href="@{/css/bootstrap-table.min.css}"/>
-<script th:src="@{/js/bootstrap-table.min.js}"></script>
-<script th:src="@{/js/bootstrap-table-zh-CN.min.js}"></script>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table.min.css}"/>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table-page-jump-to.min.css}"/>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-page-jump-to.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-toolbar.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-export.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-zh-CN.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/tableExport.min.js}"></script>
+<style>
+    .form-group {
+        margin-bottom: 10px;
+    }
+</style>
 <body class="fixed-left">
 <div id="wrapper">
     <div th:replace="~{admin/commons::sidebar}"></div>
     <div class="content-page">
-        <div class="content">
+        <div class="content" style="margin-bottom: 0;margin-top: 45px">
             <div class="container">
                 <div aria-hidden="true" aria-labelledby="myModalLabel" class="modal fade" id="myModal"
                      role="dialog" tabindex="-1">
@@ -39,82 +49,112 @@
 </div>
 <script th:inline="javascript">
     const table = $('#info-table').bootstrapTable({
-        // toolbar: '#toolbar',                //工具按钮用哪个容器
         method: "get",
-        url: /*[[@{/getInfo}]]*/+"",        //使用thymeleaf获取url
-        striped: true,                      //是否显示行间隔色
-        cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
-        pagination: true,                   //是否显示分页（*）
-        sortable: true,                     //是否启用排序
-        sortOrder: "asc",                   //排序方式
+        url: /*[[@{/getInfo?cache=false}]]*/+"",        //使用thymeleaf获取url
+        cache: false,
+
+        classes: 'table table-bordered table-hover table-striped',
+        rowStyle: 'rowStyle',
+
+        virtualScroll: true,
+        height: 640,
+
+        sortable: true,
+        silentSort: true,
+        sortOrder: "asc",
+        sortStable: true,
         rememberOrder: true,
         serverSort: false,
-        // queryParams: 'queryParams',         //传递参数（*）
-        sidePagination: "client",           //分页方式：client客户端分页，server服务端分页（*）
-        pageNumber: 1,                       //初始化加载第一页，默认第一页
-        pageSize: 10,                       //每页的记录行数（*）
-        pageList: [10, 25, 50, 100],        //可供选择的每页的行数（*）
-        smartDisplay: true,
-        search: true,                      //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+
+        pagination: true,
+        sidePagination: "client",
+        pageNumber: 1,
+        pageSize: 10,
+        pageList: [10, 25, 50, 100],
+
+        search: true,
+        visibleSearch: true,
         strictSearch: false,
-        showColumns: true,                 //是否显示所有的列
-        showRefresh: true,                 //是否显示刷新按钮
-        minimumCountColumns: 1,             //最少允许的列数
-        clickToSelect: true,                //是否启用点击选中行
-        // height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
-        uniqueId: "source",                     //每一行的唯一标识，一般为主键列
-        showToggle: true,                   //是否显示详细视图和列表视图的切换按钮
-        cardView: false,                    //是否显示详细视图
-        detailView: false,                   //是否显示父子表
-        rowStyle: 'rowStyle',
+        searchOnEnterKey: true,
+        showSearchButton: true,
+        showSearchClearButton: true,
+
+        showColumns: true,
+        showColumnsToggleAll: true,
+        minimumCountColumns: 0,
+
+        showRefresh: true,
+        showToggle: true,
+        showFullscreen: true,
+        smartDisplay: true,
+        escape: true,
+
+        showJumpTo: true,
+        advancedSearch: true,
+        idTable: "advancedTable",
+        showExport: true,
+        exportDataType: 'all',
+        exportTypes: ['json', 'xml', 'csv', 'txt', 'sql', 'excel'],
+        exportOptions: {
+            fileName: function () {
+                return '转换信息'
+            }
+        },
+
         columns: [{
             field: 'id',
             visible: false,
+            switchable: false,
+            searchable: false,
         }, {
             title: '源路径',
             field: 'source',
             align: 'center',
             width: 80,
             sortable: true,
+            cellStyle: 'overflowTextStyle',
+            formatter: 'formatOverflowText',
         }, {
             title: '目的路径',
             field: 'target',
             align: 'center',
             width: 80,
             sortable: true,
+            cellStyle: 'overflowTextStyle',
+            formatter: 'formatOverflowText',
         }, {
             title: '大小',
             field: 'size',
             align: 'center',
-            width: 40,
+            width: 50,
             sortable: true,
-            sorter: 'customColumnSortSize',
+            formatter: 'formatSize',
         }, {
             title: '加入时间',
             field: 'join',
             align: 'center',
-            width: 80,
+            width: 90,
             sortable: true,
             formatter: 'formatTime',
         }, {
             title: '开始时间',
             field: 'start',
             align: 'center',
-            width: 80,
+            width: 90,
             sortable: true,
             formatter: 'formatTime',
         }, {
             title: '结束时间',
             field: 'end',
             align: 'center',
-            width: 80,
+            width: 90,
             sortable: true,
             formatter: 'formatTime',
         }, {
             title: '耗时',
             field: 'cost',
             align: 'center',
-            width: 40,
+            width: 45,
             sortable: true,
             sorter: 'customColumnSortCost',
             formatter: 'formatCost',
@@ -122,7 +162,7 @@
             title: '状态',
             field: 'status',
             align: 'center',
-            width: 40,
+            width: 45,
             sortable: true,
             sorter: 'customColumnSortStatus',
             formatter: 'formatStatus',
@@ -136,22 +176,50 @@
             title: '错误',
             field: 'exceptions',
             align: 'center',
-            width: 40,
+            width: 80,
             sortable: true,
-            formatter: 'formatException',
+            cellStyle: 'overflowTextStyle',
+            formatter: 'formatOverflowText',
         }, {
             title: '操作',
             field: 'action',
             align: 'center',
             width: 30,
+            searchable: false,
             formatter: 'actionFormatter',
         }]
     });
 
+    let count = 0;
+    let timer;
+
+    // 刷新表格
+    function refresh() {
+        $.ajax({
+            type: "get",
+            url: /*[[@{/getInfo?cache=true}]]*/+"",    //使用thymeleaf获取url
+            dataType: "json",
+            success: function (data) {
+                count = 0;
+                if (data && data[0] !== 'Not Modified') {
+                    const scrollPosition = table.bootstrapTable('getScrollPosition');
+                    table.bootstrapTable('load', data);
+                    table.bootstrapTable('scrollTo', {unit: 'px', value: scrollPosition});
+                }
+            },
+            error: function () {
+                // 3次失败停止刷新
+                if (++count > 3) {
+                    clearInterval(timer);
+                }
+            },
+        });
+    }
+
     // 定时任务, 每5秒执行一次
     (function () {
-        setInterval(function () {
-            table.bootstrapTable('refresh', {silent: true});
+        timer = setInterval(function () {
+            refresh();
         }, 5000);
     })();
 
@@ -171,27 +239,19 @@
         return {classes: strclass}
     }
 
-    // 自定义文件大小排序
-    function customColumnSortSize(value1, value2) {
-        const a1 = value1.split(" ")[0];
-        const a2 = value1.split(" ")[1];
-        const b1 = value2.split(" ")[0];
-        const b2 = value2.split(" ")[1];
-        if (a2 === b2) {
-            return a1 - b1;
-        } else {
-            return getSizePriority(a2) - getSizePriority(b2);
-        }
-    }
+    // 格式化文件大小
+    function formatSize(value) {
+        const num = 1024.00;
 
-    // 比较大小后缀优先级
-    function getSizePriority(value) {
-        if (value === "MB")
-            return 3;
-        if (value === "KB")
-            return 2;
-        if (value === "B")
-            return 1;
+        if (value < num)
+            return value + "B";
+        if (value < Math.pow(num, 2))
+            return (value / num).toFixed(2) + "KB";
+        if (value < Math.pow(num, 3))
+            return (value / Math.pow(num, 2)).toFixed(2) + "MB";
+        if (value < Math.pow(num, 4))
+            return (value / Math.pow(num, 3)).toFixed(2) + "GB";
+        return (value / Math.pow(num, 4)).toFixed(2) + "TB";
     }
 
     // 格式化时间
@@ -220,13 +280,15 @@
         if (value === 'FINISH')
             return '已完成';
         if (value === 'RETRY')
-            return '正在重试';
+            return '等待重试';
         if (value === 'ERROR')
-            return '错误';
+            return '任务错误';
         if (value === 'CANCEL')
-            return '取消';
-        if (value === 'WAIT_OUTSIDE' || value === 'WAIT_IN_POOL')
-            return '正在等待';
+            return '任务取消';
+        if (value === 'WAIT_OUTSIDE')
+            return '等待(外)';
+        if (value === 'WAIT_IN_POOL')
+            return '等待(内)';
         return '-';
     }
 
@@ -238,11 +300,22 @@
         return cost / 1000 + "秒";
     }
 
-    // 格式化异常
-    function formatException(value) {
+    // 长文本样式
+    function overflowTextStyle() {
+        return {
+            css: {
+                "overflow": "hidden",               // 溢出隐藏
+                "text-overflow": "ellipsis",        // 显示省略符号来代表被修剪的文本
+                // "white-space": 'nowrap',            // 不换行
+            }
+        }
+    }
+
+    // 格式化长文本
+    function formatOverflowText(value) {
         if (value === '')
             return '-';
-        return '<a href="javascript:void(0)" data-toggle="tooltip" title="' + value + '">错误详情</a>';
+        return '<span data-toggle="tooltip" title="' + value + '">' + value + '</span>';
     }
 
     // 自定义任务耗时排序
@@ -307,11 +380,14 @@
                     if (result && result === 'success') {
                         alert('取消成功');
                         $('#myModal').modal('hide');
-                        table.bootstrapTable('refresh', {silent: true});
+                        refresh();
                     } else {
                         alert('取消失败\r\n' + result);
                     }
                 },
+                error: function () {
+                    alert('取消失败');
+                }
             });
         });
     }

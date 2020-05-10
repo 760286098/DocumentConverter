@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.interceptor.KeyGenerator;
@@ -36,8 +37,9 @@ public class RedisConfig extends CachingConfigurerSupport {
     /**
      * 自定义RedisTemplate
      */
-    @Bean
-    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory, RedisSerializer<Object> redisSerializer) {
+    @Bean("redisTemplate")
+    public RedisTemplate<Object, Object> redisTemplate(final @Qualifier("redisConnectionFactory") RedisConnectionFactory redisConnectionFactory,
+                                                       final @Qualifier("redisSerializer") RedisSerializer<Object> redisSerializer) {
         log.debug("开始注册bean(RedisConfig.redisTemplate)");
         RedisTemplate<Object, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(redisConnectionFactory);
@@ -54,7 +56,7 @@ public class RedisConfig extends CachingConfigurerSupport {
     /**
      * 自定义redis序列化
      */
-    @Bean
+    @Bean("redisSerializer")
     public RedisSerializer<Object> redisSerializer() {
         log.debug("开始注册bean(RedisConfig.redisSerializer)");
         ObjectMapper objectMapper = new ObjectMapper();
@@ -81,8 +83,9 @@ public class RedisConfig extends CachingConfigurerSupport {
     /**
      * 自定义CacheManager
      */
-    @Bean
-    public CacheManager cacheManager(RedisConnectionFactory factory, RedisSerializer<Object> redisSerializer) {
+    @Bean("cacheManager")
+    public CacheManager cacheManager(final @Qualifier("redisConnectionFactory") RedisConnectionFactory redisConnectionFactory,
+                                     final @Qualifier("redisSerializer") RedisSerializer<Object> redisSerializer) {
         log.debug("开始注册bean(RedisConfig.cacheManager)");
         RedisCacheConfiguration redisCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig();
         redisCacheConfiguration = redisCacheConfiguration
@@ -90,7 +93,7 @@ public class RedisConfig extends CachingConfigurerSupport {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer))
                 .entryTtl(Duration.ofMinutes(60));
 
-        RedisCacheManager cacheManager = RedisCacheManager.builder(factory)
+        RedisCacheManager cacheManager = RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(redisCacheConfiguration)
                 .build();
         log.debug("成功注册bean(RedisConfig.cacheManager)");

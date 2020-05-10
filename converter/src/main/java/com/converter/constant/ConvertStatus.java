@@ -6,7 +6,7 @@ package com.converter.constant;
  * @author Evan
  */
 
-@SuppressWarnings({"AlibabaEnumConstantsMustHaveComment"})
+@SuppressWarnings("AlibabaEnumConstantsMustHaveComment")
 public enum ConvertStatus {
     WAIT_OUTSIDE,
     WAIT_IN_POOL,

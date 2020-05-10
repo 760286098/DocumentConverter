@@ -31,9 +31,14 @@
       "description": "日志文件最大的大小."
     },
     {
-      "name": "customize.allow-without-license",
+      "name": "customize.profile.username",
       "type": "java.lang.String",
-      "description": "Description for customize.allow-without-license."
+      "description": "用户名."
+    },
+    {
+      "name": "customize.profile.password",
+      "type": "java.lang.String",
+      "description": "密码."
     }
   ]
 }

@@ -1,0 +1,46 @@
+#log-container {
+    height: 80%;
+    width: 80%;
+    overflow: auto;
+    background: #EEEEEE;
+    position: absolute;
+    padding: 20px;
+}
+
+#log-tip {
+}
+
+.log-item {
+}
+
+.log-timestamp {
+}
+
+.log-level {
+}
+
+.level-info {
+    color: #AAC000;
+}
+
+.level-debug {
+    color: #AAC000;
+}
+
+.level-warn {
+    color: #D59D30;
+}
+
+.level-error {
+    color: #fb6a53;
+}
+
+.log-thread-name {
+}
+
+.log-class-name {
+    color: #309899;
+}
+
+.log-message {
+}

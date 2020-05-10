@@ -10,7 +10,7 @@
     </parent>
     <groupId>com</groupId>
     <artifactId>converter</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <name>converter</name>
     <description>High-performance document converter for PDF</description>
 
@@ -19,11 +19,14 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
         <mybatis-starter-version>2.1.2</mybatis-starter-version>
+        <shiro-starter-version>1.5.2</shiro-starter-version>
         <lombok-version>1.18.12</lombok-version>
         <druid-starter-version>1.1.20</druid-starter-version>
         <fastjson-version>1.2.67</fastjson-version>
-        <aspose-words-version>20.3</aspose-words-version>
-        <aspose-cells-version>18.9</aspose-cells-version>
+        <concurrentlinkedhashmap-version>1.4.2</concurrentlinkedhashmap-version>
+        <aspose-words-version>20.4</aspose-words-version>
+        <aspose-cells-version>20.4</aspose-cells-version>
+        <aspose-slides-version>20.4</aspose-slides-version>
     </properties>
 
     <dependencies>
@@ -57,6 +60,16 @@
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>${mybatis-starter-version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.shiro</groupId>
+            <artifactId>shiro-spring-boot-web-starter</artifactId>
+            <version>${shiro-starter-version}</version>
+        </dependency>
+
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
@@ -106,6 +119,14 @@
             <version>${fastjson-version}</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/com.googlecode.concurrentlinkedhashmap/concurrentlinkedhashmap-lru -->
+        <dependency>
+            <groupId>com.googlecode.concurrentlinkedhashmap</groupId>
+            <artifactId>concurrentlinkedhashmap-lru</artifactId>
+            <version>${concurrentlinkedhashmap-version}</version>
+        </dependency>
+
+
         <dependency>
             <groupId>com.aspose</groupId>
             <artifactId>aspose-words</artifactId>
@@ -117,6 +138,13 @@
             <groupId>com.aspose</groupId>
             <artifactId>aspose-cells</artifactId>
             <version>${aspose-cells-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aspose</groupId>
+            <artifactId>aspose-slides</artifactId>
+            <version>${aspose-slides-version}</version>
+            <classifier>jdk16</classifier>
         </dependency>
     </dependencies>
 
@@ -144,7 +172,9 @@
                             <version>${aspose-words-version}</version>
                             <classifier>jdk17</classifier>
                             <packaging>jar</packaging>
-                            <file>${project.basedir}/src/main/resources/static/lib/aspose-words-20.3-jdk17.jar</file>
+                            <file>
+                                ${project.basedir}/src/main/resources/static/lib/aspose-words-${aspose-words-version}-jdk17.jar
+                            </file>
                             <repositoryLayout>default</repositoryLayout>
                             <generatePom>true</generatePom>
                         </configuration>
@@ -160,7 +190,28 @@
                             <artifactId>aspose-cells</artifactId>
                             <version>${aspose-cells-version}</version>
                             <packaging>jar</packaging>
-                            <file>${project.basedir}/src/main/resources/static/lib/aspose-cells-18.9.jar</file>
+                            <file>
+                                ${project.basedir}/src/main/resources/static/lib/aspose-cells-${aspose-cells-version}.jar
+                            </file>
+                            <repositoryLayout>default</repositoryLayout>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>slides</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>com.aspose</groupId>
+                            <artifactId>aspose-slides</artifactId>
+                            <version>${aspose-slides-version}</version>
+                            <classifier>jdk16</classifier>
+                            <packaging>jar</packaging>
+                            <file>
+                                ${project.basedir}/src/main/resources/static/lib/aspose-slides-${aspose-slides-version}-jdk16.jar
+                            </file>
                             <repositoryLayout>default</repositoryLayout>
                             <generatePom>true</generatePom>
                         </configuration>
@@ -168,6 +219,15 @@
                 </executions>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <!--排除lib文件夹-->
+                    <exclude>static/lib/**</exclude>
+                </excludes>
+            </resource>
+        </resources>
     </build>
 
 </project>

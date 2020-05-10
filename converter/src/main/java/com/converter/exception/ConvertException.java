@@ -12,7 +12,7 @@ public class ConvertException {
          *
          * @param e 异常
          */
-        public LicenseException(Exception e) {
+        public LicenseException(final Exception e) {
             super(String.format("载入授权文件失败:[%s]", e.getMessage()));
         }
     }
@@ -23,7 +23,7 @@ public class ConvertException {
          *
          * @param e 异常
          */
-        public WordConvertException(Exception e) {
+        public WordConvertException(final Exception e) {
             super(String.format("Word文件转换出错:[%s]", e.getMessage()));
         }
     }
@@ -34,8 +34,19 @@ public class ConvertException {
          *
          * @param e 异常
          */
-        public CellConvertException(Exception e) {
+        public CellConvertException(final Exception e) {
             super(String.format("Cell文件转换出错:[%s]", e.getMessage()));
+        }
+    }
+
+    public static class SlideConvertException extends RuntimeException {
+        /**
+         * Cell类型文件转换出现的异常
+         *
+         * @param e 异常
+         */
+        public SlideConvertException(final Exception e) {
+            super(String.format("Slide文件转换出错:[%s]", e.getMessage()));
         }
     }
 }

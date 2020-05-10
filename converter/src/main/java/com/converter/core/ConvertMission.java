@@ -6,19 +6,15 @@ import com.converter.exception.ConvertException;
 import com.converter.exception.FileException;
 import com.converter.pojo.ConvertInfo;
 import com.converter.utils.FileUtils;
-import com.converter.utils.RedisUtils;
-import com.converter.utils.TimeUtils;
+import com.converter.utils.StringUtils;
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.Arrays;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * 任务类, 负责具体文档转换
@@ -31,7 +27,7 @@ public class ConvertMission {
     /**
      * 错误分隔符
      */
-    private final static String SEPARATOR = "\r\n";
+    private static final String SEPARATOR = "\r\n";
     /**
      * 任务id
      */
@@ -41,47 +37,142 @@ public class ConvertMission {
      */
     private ConvertInfo convertInfo;
     /**
-     * 任务对应的runnable对象
+     * 任务对应的future
      */
-    private ConvertRunnable runnable;
-    /**
-     * 任务执行线程池, 用于执行任务
-     */
-    private ThreadPoolTaskExecutor threadPoolTaskExecutor;
-    /**
-     * 任务调度线程池, 用于给任务设置timeout
-     */
-    private ThreadPoolTaskScheduler threadPoolTaskScheduler;
-    /**
-     * 任务列表, 当任务成功或失败时从列表中删除（此时存入数据库）
-     */
-    private ConcurrentHashMap<Integer, ConvertMission> missions;
-    /**
-     * 任务线所属任务组
-     */
-    private ConcurrentHashMap<Integer, ListenableFuture<?>> futures;
-    /**
-     * 用于取消超时
-     */
-    private ScheduledFuture<?> timer;
+    private Future<?> future;
 
-    public ConvertMission(Integer missionId, ConvertInfo convertInfo) {
+    public ConvertMission(final Integer missionId,
+                          final ConvertInfo convertInfo) {
         this.missionId = missionId;
         this.convertInfo = convertInfo;
-        this.runnable = new ConvertRunnable(this);
-        this.threadPoolTaskExecutor = ConvertManager.getThreadPoolTaskExecutor();
-        this.threadPoolTaskScheduler = ConvertManager.getThreadPoolTaskScheduler();
-        this.missions = ConvertManager.getMissions();
-        this.futures = ConvertManager.getFutures();
+        this.future = null;
     }
 
     /**
-     * 设置任务状态
-     *
-     * @param status 新状态
+     * 启动任务
      */
-    public void setStatus(ConvertStatus status) {
-        convertInfo.setStatus(status);
+    public void startMission() {
+        ConvertRunnable runnable = new ConvertRunnable(this);
+        future = ConvertManager.getThreadPoolTaskExecutor().submit(runnable);
+        ConvertManager.getFutures().put(missionId, future);
+        convertInfo.setStatus(ConvertStatus.WAIT_IN_POOL);
+        try {
+            // 阻塞等待
+            future.get();
+            // 任务成功
+            success();
+        } catch (Exception e) {
+            // 向runnable发送中断请求
+            runnable.interrupt();
+            // 取消任务
+            future.cancel(true);
+            // 任务失败
+            fail(e);
+        } finally {
+            // 从futures中移除
+            ConvertManager.getFutures().remove(missionId);
+        }
+    }
+
+    /**
+     * 任务成功后操作
+     */
+    private void success() {
+        convertInfo.setStatus(ConvertStatus.FINISH);
+        convertInfo.setEndTime(System.currentTimeMillis());
+        // 写入数据库
+        save();
+        log.info("任务转换完成, 耗时:{}秒[{}]", (convertInfo.getEndTime() - convertInfo.getStartTime()) / 1000.0, convertInfo.getSourceFilePath());
+    }
+
+    /**
+     * 任务失败后操作
+     *
+     * @param e 异常
+     */
+    private void fail(final Exception e) {
+        // 源文件路径
+        String sourceFilePath = convertInfo.getSourceFilePath();
+        // 记录任务状态
+        ConvertStatus status = convertInfo.getStatus();
+        // 错误信息
+        String error = e.getMessage();
+        // 是否重试
+        boolean retry = false;
+        // 是否删除文件
+        boolean delete = true;
+        // 判断错误类型
+        if (e instanceof CancellationException) {
+            if (status == ConvertStatus.CANCEL) {
+                error = "任务取消";
+                log.info("取消任务成功[{}]", sourceFilePath);
+            } else if (status == ConvertStatus.RUN) {
+                error = "任务超时";
+                if (retry()) {
+                    retry = true;
+                    log.error("任务超时, 进行重试, 重试次数:{}[{}]", convertInfo.getRetry(), sourceFilePath);
+                } else {
+                    log.error("任务超时, 重试超过最大次数, 停止执行[{}]", sourceFilePath);
+                }
+            } else {
+                // 任务队列已满, 等待下一轮扫描
+                convertInfo.setStatus(ConvertStatus.WAIT_OUTSIDE);
+                return;
+            }
+        } else if (e instanceof ExecutionException) {
+            Throwable cause = e.getCause();
+            error = cause == null ? "未知错误" : cause.getMessage();
+            delete = false;
+            if (cause instanceof FileException.FileTypeException) {
+                log.error(error);
+            } else if (cause instanceof ConvertException.WordConvertException
+                    || cause instanceof ConvertException.CellConvertException
+                    || cause instanceof ConvertException.SlideConvertException) {
+                /*if (retry()) {
+                    retry = true;
+                    log.error("任务转换出错, 进行重试, 重试次数:{}, 错误信息:[{}][{}]", convertInfo.getRetry(), error, sourceFilePath);
+                } else {
+                    log.error("任务转换出错, 重试超过最大次数, 停止执行, 错误信息:[{}][{}]", error, sourceFilePath);
+                }*/
+                log.error("任务转换出错, 错误信息:[{}][{}]", error, sourceFilePath);
+            } else {
+                log.error("任务出现未知错误[{}]", sourceFilePath, e);
+            }
+        } else if (e instanceof InterruptedException) {
+            error = "任务中断";
+            log.error("任务中断[{}]", sourceFilePath);
+        } else {
+            log.error("任务出现未知错误[{}]", sourceFilePath, e);
+        }
+        // 修改任务状态
+        if (!retry && status != ConvertStatus.CANCEL) {
+            convertInfo.setStatus(ConvertStatus.ERROR);
+        }
+        // 写入错误信息
+        String exceptions = convertInfo.getExceptions();
+        // 如果是新型错误才添加
+        if (StringUtils.isEmpty(exceptions)) {
+            convertInfo.setExceptions(error);
+        } else if (!Arrays.asList(exceptions.split(SEPARATOR)).contains(error)) {
+            convertInfo.setExceptions(exceptions + SEPARATOR + error);
+        }
+        // 如果重试, 将任务移除并添加到队尾
+        if (retry) {
+            ConcurrentLinkedHashMap<Integer, ConvertMission> missions = ConvertManager.getMissions();
+            missions.put(missionId, missions.remove(missionId));
+        }
+        // 如果无法重试, 则移除并写入数据库
+        else {
+            // 删除临时文件, 如果失败则重试一次
+            String targetFilePath = convertInfo.getTargetFilePath();
+            if (delete && !FileUtils.deleteFile(targetFilePath)) {
+                if (!FileUtils.deleteFile(targetFilePath)) {
+                    log.error("文件[{}]删除失败, 请手动删除", targetFilePath);
+                }
+            }
+            // 写入数据库
+            save();
+        }
     }
 
     /**
@@ -92,7 +183,6 @@ public class ConvertMission {
     private boolean retry() {
         int retry = convertInfo.getRetry();
         if (retry < CustomizeConfig.instance().getMaxRetries()) {
-            futures.remove(missionId);
             convertInfo.setStatus(ConvertStatus.RETRY);
             convertInfo.setRetry(retry + 1);
             log.debug("任务重试[{}]", convertInfo.getSourceFilePath());
@@ -102,130 +192,17 @@ public class ConvertMission {
     }
 
     /**
-     * 启动计时器
-     */
-    public void startTimer() {
-        String sourceFilePath = convertInfo.getSourceFilePath();
-        log.info("启动计时器[{}]", sourceFilePath);
-        this.timer = threadPoolTaskScheduler.getScheduledExecutor().schedule(() -> {
-            ListenableFuture<?> future = futures.get(missionId);
-            if (future != null && !future.isDone()) {
-                future.cancel(true);
-            } else {
-                log.error("timer未知错误[id={}][{}]", missionId, sourceFilePath);
-            }
-        }, CustomizeConfig.instance().getMissionTimeout(), TimeUnit.SECONDS);
-    }
-
-    /**
-     * 取消计时器
-     */
-    private void stopTimer() {
-        log.info("结束计时器{}", convertInfo.getSourceFilePath());
-        if (timer != null && !timer.isCancelled()) {
-            timer.cancel(true);
-        }
-    }
-
-    /**
-     * 启动任务
-     */
-    public void startMission() {
-        ListenableFuture<?> future = threadPoolTaskExecutor.submitListenable(runnable);
-        if (convertInfo.getStatus() != ConvertStatus.RETRY) {
-            convertInfo.setStatus(ConvertStatus.WAIT_IN_POOL);
-        }
-        String sourceFilePath = convertInfo.getSourceFilePath();
-        future.addCallback(
-                // 任务成功的回调函数
-                data -> {
-                    stopTimer();
-                    convertInfo.setStatus(ConvertStatus.FINISH);
-                    convertInfo.setEndTime(System.currentTimeMillis());
-                    missions.remove(missionId);
-                    futures.remove(missionId);
-                    // 写入数据库
-                    save();
-                    log.info("任务转换完成, 耗时:{}[{}]", TimeUtils.getReadableTime(convertInfo.getEndTime() - convertInfo.getStartTime()), sourceFilePath);
-                },
-                // 任务失败的回调函数
-                ex -> {
-                    stopTimer();
-                    // 记录之前任务状态
-                    ConvertStatus status = convertInfo.getStatus();
-                    // 修改任务状态
-                    convertInfo.setStatus(ConvertStatus.ERROR);
-                    // 删除临时文件
-                    FileUtils.deleteFile(convertInfo.getTargetFilePath());
-                    // 错误信息
-                    String error = ex.getMessage();
-                    if (ex instanceof CancellationException) {
-                        if (status == ConvertStatus.CANCEL) {
-                            convertInfo.setStatus(status);
-                            error = "任务取消";
-                        } else {
-                            error = "任务超时";
-                        }
-                    }
-                    Integer retry = convertInfo.getRetry();
-                    // 写入错误信息
-                    if (retry == 0) {
-                        convertInfo.setExceptions(error);
-                    } else {
-                        String exceptions = convertInfo.getExceptions();
-                        // 如果是新型错误才添加
-                        if (!Arrays.asList(exceptions.split(SEPARATOR)).contains(error)) {
-                            convertInfo.setExceptions(exceptions + SEPARATOR + error);
-                        }
-                    }
-                    if (ex instanceof CancellationException) {
-                        // 如果是取消任务, 则直接结束
-                        if (status == ConvertStatus.CANCEL) {
-                            log.info("取消任务成功[{}]", sourceFilePath);
-                        } else if (retry()) {
-                            log.error("任务超时, 进行重试, 重试次数:{}[{}]", retry + 1, sourceFilePath);
-                            startMission();
-                            return;
-                        } else {
-                            log.error("任务超时, 重试超过最大次数, 停止执行[{}]", sourceFilePath);
-                        }
-                    } else if (ex instanceof FileException.FileTypeException) {
-                        log.error("不支持的文件类型:[{}]", sourceFilePath);
-                    } else if (ex instanceof ConvertException.WordConvertException ||
-                            ex instanceof ConvertException.CellConvertException) {
-                        if (retry()) {
-                            log.error("任务转换出错, 进行重试, 重试次数:{}, 错误信息:[{}][{}]", retry + 1, ex.getMessage(), sourceFilePath);
-                            startMission();
-                            return;
-                        } else {
-                            log.error("任务转换出错, 重试超过最大次数, 停止执行, 错误信息:[{}][{}]", ex.getMessage(), sourceFilePath);
-                        }
-                    } else {
-                        ex.printStackTrace();
-                        log.error("任务出现未知错误, 异常信息:[{}][{}]", error, sourceFilePath);
-                    }
-                    missions.remove(missionId);
-                    futures.remove(missionId);
-                    // 写入数据库
-                    save();
-                }
-        );
-        futures.put(missionId, future);
-    }
-
-    /**
      * 取消任务
      */
     public void cancelMission() {
-        convertInfo.setStatus(ConvertStatus.CANCEL);
-        ListenableFuture<?> future = futures.get(missionId);
-        // 如果是正在运行或在线程池等待的任务, 利用future.cancel触发异常, 从而取消任务; 否则手动取消
-        if (future != null && !future.isDone()) {
-            future.cancel(true);
-        } else {
-            missions.remove(missionId);
-            futures.remove(missionId);
-            save();
+        try {
+            // 如果是正在运行或在线程池等待的任务, 利用future.cancel触发异常, 从而取消任务
+            if (future != null && !future.isDone()) {
+                convertInfo.setStatus(ConvertStatus.CANCEL);
+                future.cancel(true);
+            }
+        } catch (Exception e) {
+            log.error("取消任务失败{}", convertInfo, e);
         }
     }
 
@@ -233,17 +210,24 @@ public class ConvertMission {
      * 任务结束时写入数据库
      */
     private void save() {
-        // 写入redis
-        RedisUtils.sSet(CustomizeConfig.instance().getRedisInfoKey(), convertInfo.toString());
-        // 写入数据库
-        ConvertManager.getConvertInfoMapper().insert(convertInfo);
-        log.debug("写入数据库成功{}", convertInfo);
+        try {
+            // 将已完成任务从列表移除, 并将转换信息写入finish队列
+            if (!ConvertManager.getMissions().remove(missionId, this)) {
+                log.error("任务移除失败[{}]", missionId);
+            }
+            ConvertManager.getFinishedInfo().add(convertInfo);
+            // 写入数据库
+            ConvertManager.getConvertInfoMapper().insert(convertInfo);
+            log.debug("写入数据库成功[{}]", convertInfo);
+        } catch (Exception e) {
+            log.error("写入数据库失败, 错误信息:{}[{}]", e.getMessage(), convertInfo);
+        }
     }
 
     @Override
     public String toString() {
-        return String.format("[id=%s]" +
-                        "%s",
+        return String.format("[id=%s]"
+                        + "%s",
                 missionId,
                 convertInfo);
     }
