@@ -3,12 +3,12 @@
 <head th:fragment="header">
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-    <link rel="icon" th:href="@{/favicon.ico}" type="image/x-icon">
-    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
-    <link rel="stylesheet" th:href="@{/css/font-awesome.min.css}"/>
-    <link rel="stylesheet" th:href="@{/css/style.min.css}"/>
-    <script th:src="@{/js/jquery-3.4.1.min.js}"></script>
-    <script th:src="@{/js/bootstrap.min.js}"></script>
+    <link rel="icon" th:href="@{/static/favicon.ico}" type="image/x-icon">
+    <link rel="stylesheet" th:href="@{/static/css/base/bootstrap.min.css}"/>
+    <link rel="stylesheet" th:href="@{/static/css/base/font-awesome.min.css}"/>
+    <link rel="stylesheet" th:href="@{/static/css/base/style.min.css}"/>
+    <script th:src="@{/static/js/base/jquery-3.4.1.min.js}"></script>
+    <script th:src="@{/static/js/base/bootstrap.min.js}"></script>
     <title>文档转换器</title>
 </head>
 <div th:fragment="sidebar">
@@ -16,7 +16,7 @@
         <div class="topbar-left">
             <div class="text-center p-t-10" style="margin: 0 auto;">
                 <div class="pull-left" style="padding-left: 40px;">
-                    <span style="font-size: 28px; color: #2f353f; line-height: 50px;">文档转换器</span>
+                    <span style="font-size: 28px; color: #2f353f; line-height: 25px;">文档转换器</span>
                 </div>
             </div>
         </div>
@@ -37,7 +37,7 @@
                     <li>
                         <a th:class="${type}=='list'?'waves-effect active':'waves-effect'"
                            th:href="@{/index}">
-                            <i aria-hidden="true" class="fa fa-list"></i>
+                            <i aria-hidden="true" class="fa fa-home"></i>
                             <span>任务列表</span>
                         </a>
                     </li>
@@ -46,6 +46,20 @@
                            th:href="@{/watch}">
                             <i aria-hidden="true" class="fa fa-eye"></i>
                             <span>监控列表</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a th:class="${type}=='thread'?'waves-effect active':'waves-effect'"
+                           th:href="@{/thread}">
+                            <i aria-hidden="true" class="fa fa-tasks"></i>
+                            <span>线程池</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a th:class="${type}=='log'?'waves-effect active':'waves-effect'"
+                           th:href="@{/log}">
+                            <i aria-hidden="true" class="fa fa-file"></i>
+                            <span>日志</span>
                         </a>
                     </li>
                     <li>
@@ -66,6 +80,16 @@
             $("#wrapper").toggleClass("enlarged");
             $(".topbar-left").toggle();
         });
+
+        /*//判断配置文件是否开启日志调试 是否输出日志 True 输出 False 不输出
+        const logDebug = false;
+        console.log = (function (oriLogFunc) {
+            return function () {
+                if (logDebug) {
+                    oriLogFunc.apply(this, arguments);
+                }
+            }
+        })(console.log);*/
     </script>
 </div>
 </html>

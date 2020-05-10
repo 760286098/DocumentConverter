@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" th:with="type='watch'" xmlns:th="http://www.thymeleaf.org">
 <header th:replace="~{admin/commons::header}"></header>
-<link rel="stylesheet" th:href="@{/css/bootstrap-table.min.css}"/>
-<script th:src="@{/js/bootstrap-table.min.js}"></script>
-<script th:src="@{/js/bootstrap-table-zh-CN.min.js}"></script>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table.min.css}"/>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table-page-jump-to.min.css}"/>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-page-jump-to.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-zh-CN.min.js}"></script>
 <body class="fixed-left">
 <div id="wrapper">
     <div th:replace="~{admin/commons::sidebar}"></div>
     <div class="content-page">
-        <div class="content">
+        <div class="content" style="margin-bottom: 0;margin-top: 45px">
             <div class="container">
-                <button class="btn btn-primary btn-md" data-target="#myModal" data-toggle="modal">添加文件/文件夹</button>
+                <div id="toolbar">
+                    <button class="btn btn-primary btn-md" data-target="#myModal" data-toggle="modal">添加文件/文件夹</button>
+                </div>
                 <div aria-hidden="true" aria-labelledby="myModalLabel" class="modal fade" id="myModal"
                      role="dialog" tabindex="-1">
                     <div class="modal-dialog">
@@ -20,15 +24,15 @@
                                 <h4 class="modal-title" id="myModalLabel">添加文件/文件夹</h4>
                             </div>
                             <div class="modal-body">
-                                <form action="#" class="form-horizontal" id="add-form"
+                                <form action="javascript:void(0);" class="form-horizontal" id="add-form"
                                       onsubmit="saveSetting();return false;"
                                       role="form">
                                     <div class="form-group">
                                         <label class="col-sm-2 control-label" for="sourcePath">源路径</label>
                                         <div class="col-sm-10">
                                             <input class="form-control" id="sourcePath" name="sourcePath"
-                                                   pattern='[\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*'
-                                                   required="required"
+                                                   pattern='([\w]:\\([^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*|\/([^\\/:*?"<>|\r\n]+\/)*[^\\/:*?"<>|\r\n]*)?'
+                                                   placeholder="不填写则视为文件上传(文件上传优先级更高)"
                                                    type="text">
                                         </div>
                                     </div>
@@ -48,6 +52,13 @@
                                                 <option value="file">文件</option>
                                                 <option value="dir">文件夹</option>
                                             </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="col-sm-2 control-label" for="file">文件上传</label>
+                                        <div class="col-sm-10">
+                                            <input class="form-control" id="file" name="file"
+                                                   type="file">
                                         </div>
                                     </div>
                                 </form>
@@ -88,34 +99,49 @@
 </div>
 <script th:inline="javascript">
     const table = $('#files-table').bootstrapTable({
-        // toolbar: '#toolbar',                //工具按钮用哪个容器
         method: "get",
-        url: /*[[@{/getWatchedFiles}]]*/+"",       //使用thymeleaf获取url
-        striped: true,                      //是否显示行间隔色
-        cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
-        pagination: true,                   //是否显示分页（*）
-        sortable: true,                     //是否启用排序
-        sortOrder: "asc",                   //排序方式
+        url: /*[[@{/getWatchedFiles}]]*/+"",        //使用thymeleaf获取url
+        cache: false,
+        toolbar: '#toolbar',
+
+        classes: 'table table-bordered table-hover table-striped',
+        rowStyle: 'rowStyle',
+
+        virtualScroll: true,
+        height: 640,
+
+        sortable: true,
+        silentSort: true,
+        sortOrder: "asc",
+        sortStable: true,
         rememberOrder: true,
         serverSort: false,
-        // queryParams: 'queryParams',         //传递参数（*）
-        sidePagination: "client",           //分页方式：client客户端分页，server服务端分页（*）
-        pageNumber: 1,                       //初始化加载第一页，默认第一页
-        pageSize: 10,                       //每页的记录行数（*）
-        pageList: [10, 25, 50, 100],        //可供选择的每页的行数（*）
-        smartDisplay: true,
-        search: true,                      //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+
+        pagination: true,
+        sidePagination: "client",
+        pageNumber: 1,
+        pageSize: 25,
+        pageList: [25, 50, 100],
+
+        search: true,
+        visibleSearch: true,
         strictSearch: false,
-        showColumns: true,                 //是否显示所有的列
-        showRefresh: true,                 //是否显示刷新按钮
-        minimumCountColumns: 1,             //最少允许的列数
-        clickToSelect: true,                //是否启用点击选中行
-        // height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
-        uniqueId: "source",                     //每一行的唯一标识，一般为主键列
-        showToggle: true,                   //是否显示详细视图和列表视图的切换按钮
-        cardView: false,                    //是否显示详细视图
-        detailView: false,                   //是否显示父子表
-        rowStyle: 'rowStyle',
+        searchOnEnterKey: true,
+        showSearchButton: true,
+        showSearchClearButton: true,
+
+        showColumns: true,
+        showColumnsToggleAll: true,
+        minimumCountColumns: 0,
+
+        showRefresh: true,
+        showToggle: true,
+        showFullscreen: true,
+        smartDisplay: true,
+        escape: true,
+
+        showJumpTo: true,
+
         columns: [{
             title: '路径',
             field: 'path',
@@ -184,18 +210,41 @@
                         alert('删除失败\r\n' + result);
                     }
                 },
+                error: function () {
+                    alert('删除失败');
+                }
             });
         });
     }
 
     // 添加任务文件\文件夹
     function saveSetting() {
-        const param = $('#add-form').serialize();
+        const file = $('#file');
+        if ($('#sourcePath').val() === '' && file.val() === '') {
+            alert('请填写源路径或选择文件上传');
+            return;
+        }
+        if (file.val() !== '') {
+            const size = file[0].files[0].size;
+            if (size === 0) {
+                alert('上传文件不能为空文件');
+                return;
+            }
+            if (size >= 1048576 * 50) {
+                alert('上传文件大小超出限制(50MB)');
+                return;
+            }
+        }
+        const formData = new FormData($('#add-form')[0]);
         $.ajax({
             type: "post",
             url: /*[[@{/addMissions}]]*/+"",    //使用thymeleaf获取url
+            data: formData,
+            processData: false,			    //对数据不做处理
+            cache: false,      				//上传文件不需要缓存
+            contentType: false,
+            mimeType: "multipart/form-data",
             async: false,
-            data: param,
             success: function (result) {
                 if (result && result === 'success') {
                     alert('添加成功');
@@ -205,6 +254,9 @@
                     alert('添加失败\r\n' + result);
                 }
             },
+            error: function () {
+                alert('添加失败');
+            }
         });
     }
 </script>

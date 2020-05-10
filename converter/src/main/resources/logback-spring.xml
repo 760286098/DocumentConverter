@@ -32,7 +32,7 @@
     <jmxConfigurator/>
 
     <!-- 打印打印mybatis的sql语句 -->
-    <logger name="com.converter.mapper" level="DEBUG"/>
+    <!--    <logger name="com.converter.mapper" level="DEBUG"/>-->
 
     <!-- 控制台的标准输出 -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -40,6 +40,7 @@
             <charset>UTF-8</charset>
             <pattern>${consoleLogPattern}</pattern>
         </encoder>
+        <filter class="com.converter.log.LogFilter"/>
     </appender>
 
     <!-- DEBUG 日志记录  -->

@@ -5,8 +5,6 @@ import com.converter.exception.FileException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
-import java.text.CharacterIterator;
-import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,20 +15,25 @@ import java.util.List;
  */
 @Slf4j
 public final class FileUtils {
+    private FileUtils() {
+    }
+
     /**
      * 检查源文件是否有问题
      *
      * @param sourceFilePath 源文件路径
      * @return true代表没问题
      */
-    public static boolean testSourceFile(String sourceFilePath) {
+    public static boolean testSourceFile(final String sourceFilePath) {
         if (StringUtils.isEmpty(sourceFilePath)) {
             return false;
         }
         File sourceFile = new File(sourceFilePath);
+        // 判断文件是否存在
         if (!sourceFile.exists() || !sourceFile.isFile()) {
             throw new FileException.FileNotExistsException(sourceFilePath);
         }
+        // 判断文件是否已经处理过
         if (testAndSetFile(sourceFilePath)) {
             log.debug("源文件已在redis缓存中: [" + sourceFilePath + "]");
             return false;
@@ -45,7 +48,8 @@ public final class FileUtils {
      * @param isScan        true代表是扫描, 不用检测目录是否在redis缓存中
      * @return true代表没问题
      */
-    public static boolean testSourceDir(String sourceDirPath, boolean isScan) {
+    public static boolean testSourceDir(final String sourceDirPath,
+                                        final boolean isScan) {
         if (StringUtils.isEmpty(sourceDirPath)) {
             return false;
         }
@@ -66,7 +70,7 @@ public final class FileUtils {
      * @param path 文件路径
      * @return true代表已存在, false代表不存在, 并将其加入redis
      */
-    private static boolean testAndSetFile(String path) {
+    private static boolean testAndSetFile(final String path) {
         String key = CustomizeConfig.instance().getRedisFileKey();
         if (!RedisUtils.sHasKey(key, path)) {
             RedisUtils.sSet(key, path);
@@ -81,7 +85,7 @@ public final class FileUtils {
      * @param path 目录路径
      * @return true代表已存在, false代表不存在, 并将其加入redis
      */
-    private static boolean testAndSetDir(String path) {
+    private static boolean testAndSetDir(final String path) {
         String key = CustomizeConfig.instance().getRedisDirKey();
         if (!RedisUtils.sHasKey(key, path)) {
             RedisUtils.sSet(key, path);
@@ -97,12 +101,11 @@ public final class FileUtils {
      * @param create true代表没有就新建
      * @return true代表没问题
      */
-    private static boolean isDir(String path, boolean create) {
+    private static boolean isDir(final String path,
+                                 final boolean create) {
         File targetDir = new File(path);
         if (!targetDir.exists()) {
-            if (create) {
-                targetDir.mkdirs();
-            } else {
+            if (!create || !targetDir.mkdirs()) {
                 throw new FileException.DirNotExistsException(path);
             }
         }
@@ -118,58 +121,21 @@ public final class FileUtils {
      * @param path 目录路径
      * @return 文件路径集合
      */
-    public static String[] listDir(String path) {
+    public static String[] listDir(final String path) {
         log.debug("获取文件夹[{}]下所有文件", path);
+        String[] empty = new String[0];
         File[] files = new File(path).listFiles();
         if (files == null) {
-            return new String[0];
+            return empty;
         }
         List<String> list = new ArrayList<>();
         for (File file : files) {
-            if (file.isFile()) {
+            // 添加普通文件, 同时排除~$临时文件
+            if (file.isFile() && !file.getName().startsWith("~$")) {
                 list.add(file.getAbsolutePath());
             }
         }
-        return list.toArray(new String[0]);
-    }
-
-    /**
-     * 将文件长度转为可读大小, 1k=1000
-     *
-     * @param bytes 文件长度
-     * @return 可读大小
-     */
-    public static String getReadableByteCountSi(long bytes) {
-        if (-1000 < bytes && bytes < 1000) {
-            return bytes + " B";
-        }
-        CharacterIterator ci = new StringCharacterIterator("kMGTPE");
-        while (bytes <= -999_950 || bytes >= 999_950) {
-            bytes /= 1000;
-            ci.next();
-        }
-        return String.format("%.1f %cB", bytes / 1000.0, ci.current());
-    }
-
-    /**
-     * 将文件长度转为可读大小, 1K=1024
-     *
-     * @param bytes 文件长度
-     * @return 可读大小
-     */
-    public static String getReadableByteCountBin(long bytes) {
-        long absB = bytes == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(bytes);
-        if (absB < 1024) {
-            return bytes + " B";
-        }
-        long value = absB;
-        CharacterIterator ci = new StringCharacterIterator("KMGTPE");
-        for (int i = 40; i >= 0 && absB > 0xfffccccccccccccL >> i; i -= 10) {
-            value >>= 10;
-            ci.next();
-        }
-        value *= Long.signum(bytes);
-        return String.format("%.1f %cB", value / 1024.0, ci.current());
+        return list.toArray(empty);
     }
 
     /**
@@ -178,12 +144,14 @@ public final class FileUtils {
      * @param path 路径
      * @return 处理后的路径
      */
-    public static String dealWithDir(String path) {
+    public static String dealWithDir(final String path) {
         if (StringUtils.isEmpty(path)) {
             throw new FileException.DirNotExistsException(path);
         }
         if (isDir(path, true)) {
-            StringBuilder sb = new StringBuilder(path);
+            // 可以根据相对路径获取绝对路径
+            String absolutePath = new File(path).getAbsolutePath();
+            StringBuilder sb = new StringBuilder(absolutePath);
             if (sb.charAt(sb.length() - 1) != File.separatorChar) {
                 sb.append(File.separatorChar);
             }
@@ -198,7 +166,14 @@ public final class FileUtils {
      * @param path 文件路径
      * @return 成功与否
      */
-    public static boolean deleteFile(String path) {
-        return new File(path).delete();
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public static boolean deleteFile(final String path) {
+        boolean delete = false;
+        try {
+            delete = new File(path).delete();
+        } catch (Exception e) {
+            log.error("删除文件失败", e);
+        }
+        return delete;
     }
 }

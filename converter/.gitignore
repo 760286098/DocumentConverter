@@ -32,3 +32,7 @@ build/
 
 # 日志文件
 logs/
+# 上传文件
+upload/
+# 生成文件
+result/

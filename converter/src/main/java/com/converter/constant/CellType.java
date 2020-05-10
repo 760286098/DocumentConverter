@@ -20,7 +20,6 @@ public enum CellType {
     XLT("XLT"),
     XLTX("XLTX"),
     XLTM("XLTM"),
-    XML("XML"),
     CSV("CSV"),
     TSV("TSV"),
     ODS("ODS"),

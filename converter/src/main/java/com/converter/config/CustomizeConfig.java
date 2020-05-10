@@ -3,6 +3,7 @@ package com.converter.config;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,13 +35,13 @@ public class CustomizeConfig {
      */
     private String redisDirKey = "REDIS_DIR";
     /**
-     * 用于存放状态为FINISH或ERROR的ConvertInfo缓存
-     */
-    private String redisInfoKey = "REDIS_INFO";
-    /**
      * 默认目标目录路径
      */
-    private String targetDirPath = ".";
+    private String targetDirPath = "result";
+    /**
+     * 文件上传目录
+     */
+    private String uploadPath = "upload";
     /**
      * 最大重试次数
      */
@@ -49,6 +50,10 @@ public class CustomizeConfig {
      * 任务超时时间（单位秒）
      */
     private Integer missionTimeout = 300;
+    /**
+     * 是否允许转换slides
+     */
+    private boolean enableSlides = false;
 
     /**
      * 允许获取自定义配置
@@ -57,8 +62,8 @@ public class CustomizeConfig {
         return customizeConfig;
     }
 
-    @Autowired
-    public void init(CustomizeConfig customizeConfig) {
+    @Autowired()
+    public void init(final @Qualifier("customizeConfig") CustomizeConfig customizeConfig) {
         log.debug("开始初始化CustomizeConfig");
         CustomizeConfig.customizeConfig = customizeConfig;
         log.debug("成功初始化CustomizeConfig");

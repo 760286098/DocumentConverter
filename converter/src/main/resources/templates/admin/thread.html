@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" th:with="type='thread'" xmlns:th="http://www.thymeleaf.org">
+<header th:replace="~{admin/commons::header}"></header>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table.min.css}"/>
+<link rel="stylesheet" th:href="@{/static/css/bootstrap-table/bootstrap-table-page-jump-to.min.css}"/>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-page-jump-to.min.js}"></script>
+<script th:src="@{/static/js/bootstrap-table/bootstrap-table-zh-CN.min.js}"></script>
+<body class="fixed-left">
+<div id="wrapper">
+    <div th:replace="~{admin/commons::sidebar}"></div>
+    <div class="content-page">
+        <div class="content" style="margin-bottom: 0;margin-top: 45px">
+            <div class="container">
+                <table class="table table-hover" id="thread-table"
+                       style="table-layout: fixed;
+                       word-break:break-all; word-wrap:break-word;">
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    const table = $('#thread-table').bootstrapTable({
+        method: "get",
+        url: /*[[@{/getThreadsInfo}]]*/+"",     //使用thymeleaf获取url
+        cache: false,
+
+        classes: 'table table-bordered table-hover table-striped',
+        rowStyle: 'rowStyle',
+
+        virtualScroll: true,
+        height: 640,
+
+        sortable: true,
+        silentSort: true,
+        sortOrder: "asc",
+        sortStable: true,
+        rememberOrder: true,
+        serverSort: false,
+
+        pagination: true,
+        sidePagination: "client",
+        pageNumber: 1,
+        pageSize: 25,
+        pageList: [25, 50, 100],
+
+        search: true,
+        visibleSearch: true,
+        strictSearch: false,
+        searchOnEnterKey: true,
+        showSearchButton: true,
+        showSearchClearButton: true,
+
+        showColumns: true,
+        showColumnsToggleAll: true,
+        minimumCountColumns: 0,
+
+        showRefresh: true,
+        showToggle: true,
+        showFullscreen: true,
+        smartDisplay: true,
+        escape: true,
+
+        showJumpTo: true,
+
+        columns: [{
+            title: '线程id',
+            field: 'id',
+            align: 'center',
+            sortable: true,
+        }, {
+            title: '线程名',
+            field: 'name',
+            align: 'center',
+            sortable: true,
+        }, {
+            title: '线程状态',
+            field: 'state',
+            align: 'center',
+            sortable: true,
+            sorter: 'customColumnSortState',
+        }, {
+            title: '线程当前位置',
+            field: 'stack',
+            align: 'center',
+            sortable: true,
+        }]
+    });
+
+    let count = 0;
+    let timer;
+
+    // 刷新表格
+    function refresh() {
+        $.ajax({
+            type: "get",
+            url: /*[[@{/getThreadsInfo}]]*/+"",    //使用thymeleaf获取url
+            dataType: "json",
+            success: function (data) {
+                count = 0;
+                if (data) {
+                    const scrollPosition = table.bootstrapTable('getScrollPosition');
+                    table.bootstrapTable('load', data);
+                    table.bootstrapTable('scrollTo', {unit: 'px', value: scrollPosition});
+                }
+            },
+            error: function () {
+                // 3次失败停止刷新
+                if (++count > 3) {
+                    clearInterval(timer);
+                }
+            },
+        });
+    }
+
+    // 定时任务, 每5秒执行一次
+    (function () {
+        timer = setInterval(function () {
+            refresh();
+        }, 5000);
+    })();
+
+    // 行内样式
+    function rowStyle(row) {
+        // 这里有5个取值代表5中颜色['active', 'success', 'info', 'warning', 'danger'];
+        let strclass = "";
+        if (row.state === "RUNNABLE") {
+            strclass = 'info';
+        } else if (row.state === "BLOCKED") {
+            strclass = 'warning';
+        }
+        return {classes: strclass}
+    }
+
+    // 自定义任务状态排序
+    function customColumnSortState(value1, value2) {
+        return getStatePriority(value1) - getStatePriority(value2);
+    }
+
+    // 定义状态优先级
+    function getStatePriority(value) {
+        if (value === 'RUNNABLE')
+            return 3;
+        if (value === 'BLOCKED')
+            return 2;
+        if (value === 'TIMED_WAITING')
+            return 1;
+        if (value === 'WAITING')
+            return 0;
+        return -1;
+    }
+</script>
+</body>
+</html>

@@ -16,12 +16,23 @@ public class WordConverter extends AbstractConverter {
      * @param targetFilePath 目的路径
      */
     @Override
-    protected void convert(String sourceFilePath, String targetFilePath) {
+    public void convert(final String sourceFilePath,
+                        final String targetFilePath) {
         try {
+            // 创建Document文档对象
             com.aspose.words.Document document = new com.aspose.words.Document(sourceFilePath);
-            document.save(targetFilePath, com.aspose.words.SaveFormat.PDF);
+            // 开始文档转换
+            document.save(targetFilePath, getWordToPdfOptions());
         } catch (Exception e) {
             throw new ConvertException.WordConvertException(e);
         }
+    }
+
+    /**
+     * 中断任务
+     */
+    @Override
+    public void interrupt() {
+        // Aspose.Words暂时没有提供中断方法
     }
 }

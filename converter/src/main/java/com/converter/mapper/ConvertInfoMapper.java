@@ -18,17 +18,17 @@ public interface ConvertInfoMapper {
      *
      * @param convertInfo 转换信息
      */
-    @Insert("INSERT INTO `convert_info` ( source_path, target_path, file_size, join_time, start_time, end_time, convert_status, retry, exceptions )" +
-            "VALUES ( " +
-            "#{sourceFilePath, jdbcType=VARCHAR}, " +
-            "#{targetFilePath, jdbcType=VARCHAR}, " +
-            "#{fileSize, jdbcType=VARCHAR}, " +
-            "#{joinTime, jdbcType=BIGINT}, " +
-            "#{startTime, jdbcType=BIGINT}, " +
-            "#{endTime, jdbcType=BIGINT}, " +
-            "#{status, jdbcType=VARCHAR}, " +
-            "#{retry, jdbcType=INTEGER}, " +
-            "#{exceptions, jdbcType=CLOB})")
+    @Insert("INSERT INTO `convert_info` ( source_path, target_path, file_size, join_time, start_time, end_time, convert_status, retry, exceptions )"
+            + "VALUES ( "
+            + "#{sourceFilePath, jdbcType=VARCHAR}, "
+            + "#{targetFilePath, jdbcType=VARCHAR}, "
+            + "#{fileSize, jdbcType=BIGINT}, "
+            + "#{joinTime, jdbcType=BIGINT}, "
+            + "#{startTime, jdbcType=BIGINT}, "
+            + "#{endTime, jdbcType=BIGINT}, "
+            + "#{status, jdbcType=VARCHAR}, "
+            + "#{retry, jdbcType=INTEGER}, "
+            + "#{exceptions, jdbcType=CLOB})")
     void insert(ConvertInfo convertInfo);
 
 
@@ -41,7 +41,7 @@ public interface ConvertInfoMapper {
     @Results({
             @Result(property = "sourceFilePath", column = "source_path", javaType = String.class),
             @Result(property = "targetFilePath", column = "target_path", javaType = String.class),
-            @Result(property = "fileSize", column = "file_size", javaType = String.class),
+            @Result(property = "fileSize", column = "file_size", javaType = Long.class),
             @Result(property = "joinTime", column = "join_time", javaType = Long.class),
             @Result(property = "startTime", column = "start_time", javaType = Long.class),
             @Result(property = "endTime", column = "end_time", javaType = Long.class),
