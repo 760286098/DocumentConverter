@@ -1,8 +1,5 @@
 package com.converter.converter;
 
-import com.aspose.cells.LoadOptions;
-import com.aspose.slides.PdfOptions;
-import com.aspose.words.PdfSaveOptions;
 import com.converter.config.CustomizeConfig;
 import com.converter.constant.CellType;
 import com.converter.constant.SlideType;
@@ -131,14 +128,14 @@ public abstract class AbstractConverter {
     /**
      * Getter
      */
-    public static LoadOptions getCellLoadOptions() {
+    public static com.aspose.cells.LoadOptions getCellLoadOptions() {
         return cellLoadOptions;
     }
 
     /**
      * Getter
      */
-    public static PdfSaveOptions getWordToPdfOptions() {
+    public static com.aspose.words.PdfSaveOptions getWordToPdfOptions() {
         return wordToPdfOptions;
     }
 
@@ -152,7 +149,7 @@ public abstract class AbstractConverter {
     /**
      * Getter
      */
-    public static PdfOptions getSlideToPdfOptions() {
+    public static com.aspose.slides.PdfOptions getSlideToPdfOptions() {
         return slideToPdfOptions;
     }
 
