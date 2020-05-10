@@ -131,8 +131,6 @@ customize:
   max-retries: 5
   # 任务超时时间（秒）
   mission-timeout: 300
-  # 是否允许转换slides（由于slides对应的第三方组件有bug, 可能会导致堆溢出, 而且内部有耗时很长同步操作, 本系统强制单线程）
-  enable-slides: false
   # 线程池
   pool:
     # 核心线程数

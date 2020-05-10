@@ -26,7 +26,6 @@
         <concurrentlinkedhashmap-version>1.4.2</concurrentlinkedhashmap-version>
         <aspose-words-version>20.4</aspose-words-version>
         <aspose-cells-version>20.4</aspose-cells-version>
-        <aspose-slides-version>20.4</aspose-slides-version>
     </properties>
 
     <dependencies>
@@ -140,12 +139,6 @@
             <version>${aspose-cells-version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.aspose</groupId>
-            <artifactId>aspose-slides</artifactId>
-            <version>${aspose-slides-version}</version>
-            <classifier>jdk16</classifier>
-        </dependency>
     </dependencies>
 
     <packaging>jar</packaging>
@@ -192,25 +185,6 @@
                             <packaging>jar</packaging>
                             <file>
                                 ${project.basedir}/src/main/resources/static/lib/aspose-cells-${aspose-cells-version}.jar
-                            </file>
-                            <repositoryLayout>default</repositoryLayout>
-                            <generatePom>true</generatePom>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>slides</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>install-file</goal>
-                        </goals>
-                        <configuration>
-                            <groupId>com.aspose</groupId>
-                            <artifactId>aspose-slides</artifactId>
-                            <version>${aspose-slides-version}</version>
-                            <classifier>jdk16</classifier>
-                            <packaging>jar</packaging>
-                            <file>
-                                ${project.basedir}/src/main/resources/static/lib/aspose-slides-${aspose-slides-version}-jdk16.jar
                             </file>
                             <repositoryLayout>default</repositoryLayout>
                             <generatePom>true</generatePom>

@@ -3,15 +3,12 @@ package com.converter.core;
 import com.converter.config.CustomizeConfig;
 import com.converter.constant.ConvertStatus;
 import com.converter.converter.AbstractConverter;
-import com.converter.converter.impl.SlideConverter;
 import com.converter.pojo.ConvertInfo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 转换任务具体执行者
@@ -20,10 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Slf4j
 public class ConvertRunnable implements Runnable {
-    /**
-     * 可中断锁, 限制只有一个PPT转换线程
-     */
-    private static final Lock LOCK = new ReentrantLock();
     /**
      * 调用者, 用于传递参数
      */
@@ -51,25 +44,8 @@ public class ConvertRunnable implements Runnable {
         String sourceFilePath = convertInfo.getSourceFilePath();
         // 获取文档转换器
         converter = AbstractConverter.getConverter(sourceFilePath);
-        // 限制PPT转换任务最多一个
-        if (converter instanceof SlideConverter) {
-            try {
-                // 获取可中断锁
-                LOCK.lockInterruptibly();
-                try {
-                    log.info("成功获取锁[{}]", sourceFilePath);
-                    proceed(convertInfo, sourceFilePath);
-                } finally {
-                    LOCK.unlock();
-                    log.info("成功释放锁[{}]", sourceFilePath);
-                }
-            } catch (InterruptedException ignored) {
-            }
-        }
-        // 其余转换任务不做限制
-        else {
-            proceed(convertInfo, sourceFilePath);
-        }
+        // 具体转换操作
+        proceed(convertInfo, sourceFilePath);
     }
 
     /**

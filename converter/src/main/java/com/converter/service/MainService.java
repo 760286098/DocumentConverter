@@ -113,7 +113,6 @@ public class MainService {
         map.put("upload", new File(config.getUploadPath()).getAbsolutePath());
         map.put("maxRetry", String.valueOf(config.getMaxRetries()));
         map.put("timeout", String.valueOf(config.getMissionTimeout()));
-        map.put("enableSlides", String.valueOf(config.isEnableSlides()));
 
         // 获取线程池配置
         ThreadPoolTaskExecutor pool = ConvertManager.getThreadPoolTaskExecutor();
@@ -139,7 +138,6 @@ public class MainService {
         config.setUploadPath(map.get("upload"));
         config.setMaxRetries(Integer.valueOf(map.get("maxRetry")));
         config.setMissionTimeout(Integer.valueOf(map.get("timeout")));
-        config.setEnableSlides("true".equals(map.get("enableSlides")));
         // 修改线程池配置
         ThreadPoolTaskExecutor pool = ConvertManager.getThreadPoolTaskExecutor();
         pool.setCorePoolSize(Integer.parseInt(map.get("corePool")));

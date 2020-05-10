@@ -126,8 +126,7 @@ public class ConvertMission {
             if (cause instanceof FileException.FileTypeException) {
                 log.error(error);
             } else if (cause instanceof ConvertException.WordConvertException
-                    || cause instanceof ConvertException.CellConvertException
-                    || cause instanceof ConvertException.SlideConvertException) {
+                    || cause instanceof ConvertException.CellConvertException) {
                 /*if (retry()) {
                     retry = true;
                     log.error("任务转换出错, 进行重试, 重试次数:{}, 错误信息:[{}][{}]", convertInfo.getRetry(), error, sourceFilePath);

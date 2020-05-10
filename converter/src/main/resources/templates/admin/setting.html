@@ -76,15 +76,6 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-sm-2 control-label" for="enableSlides">允许转换Slides(测试功能)</label>
-                        <div class="col-sm-10">
-                            <select class="form-control" id="enableSlides" name="enableSlides" required="required">
-                                <option th:selected="${setting.enableSlides}" value="true">允许</option>
-                                <option th:selected="${!setting.enableSlides}" value="false">禁止</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
                         <label class="col-sm-2 control-label" for="corePool">核心线程数</label>
                         <div class="col-sm-10">
                             <input class="form-control" id="corePool" name="corePool" required="required"

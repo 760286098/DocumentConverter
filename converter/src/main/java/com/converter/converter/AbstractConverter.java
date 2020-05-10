@@ -1,14 +1,9 @@
 package com.converter.converter;
 
-import com.aspose.cells.LoadOptions;
-import com.aspose.slides.PdfOptions;
-import com.aspose.words.PdfSaveOptions;
 import com.converter.config.CustomizeConfig;
 import com.converter.constant.CellType;
-import com.converter.constant.SlideType;
 import com.converter.constant.WordType;
 import com.converter.converter.impl.CellConverter;
-import com.converter.converter.impl.SlideConverter;
 import com.converter.converter.impl.WordConverter;
 import com.converter.exception.ConvertException;
 import com.converter.exception.FileException;
@@ -33,8 +28,6 @@ public abstract class AbstractConverter {
             = new com.aspose.words.PdfSaveOptions();
     private static com.aspose.cells.PdfSaveOptions cellToPdfOptions
             = new com.aspose.cells.PdfSaveOptions();
-    private static com.aspose.slides.PdfOptions slideToPdfOptions
-            = new com.aspose.slides.PdfOptions();
 
     private static List<String> wordTypes
             = EnumSet.allOf(WordType.class)
@@ -46,12 +39,6 @@ public abstract class AbstractConverter {
             = EnumSet.allOf(CellType.class)
             .parallelStream()
             .map(CellType::getType)
-            .distinct()
-            .collect(Collectors.toList());
-    private static List<String> slideTypes
-            = EnumSet.allOf(SlideType.class)
-            .parallelStream()
-            .map(SlideType::getType)
             .distinct()
             .collect(Collectors.toList());
 
@@ -69,10 +56,6 @@ public abstract class AbstractConverter {
         cellLoadOptions.setMemorySetting(com.aspose.cells.MemorySetting.MEMORY_PREFERENCE);
         // 将所有的列放入一页
         cellToPdfOptions.setAllColumnsInOnePagePerSheet(true);
-
-        // =============================Slide===========================
-        // 显示隐藏的PPT
-        slideToPdfOptions.setShowHiddenSlides(true);
     }
 
     /**
@@ -88,14 +71,10 @@ public abstract class AbstractConverter {
             // input流不能重复读取, 所以需要重新获取
             inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
             new com.aspose.cells.License().setLicense(inputStream);
-            // input流不能重复读取, 所以需要重新获取
-            inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
-            new com.aspose.slides.License().setLicense(inputStream);
             // 设置字体目录
             String fontDir = CustomizeConfig.instance().getFontDir();
             com.aspose.words.FontSettings.getDefaultInstance().setFontsFolder(fontDir, false);
             com.aspose.cells.FontConfigs.setFontFolder(fontDir, false);
-            com.aspose.slides.FontsLoader.loadExternalFonts(new String[]{fontDir});
             log.debug("成功初始化AbstractConverter");
         } catch (Exception e) {
             if (CustomizeConfig.instance().isAllowWithoutLicense()) {
@@ -119,9 +98,6 @@ public abstract class AbstractConverter {
             converter = new WordConverter();
         } else if (cellTypes.contains(fileExtension.toUpperCase())) {
             converter = new CellConverter();
-        } else if (CustomizeConfig.instance().isEnableSlides()
-                && slideTypes.contains(fileExtension.toUpperCase())) {
-            converter = new SlideConverter();
         } else {
             throw new FileException.FileTypeException(fileExtension);
         }
@@ -131,14 +107,14 @@ public abstract class AbstractConverter {
     /**
      * Getter
      */
-    public static LoadOptions getCellLoadOptions() {
+    public static com.aspose.cells.LoadOptions getCellLoadOptions() {
         return cellLoadOptions;
     }
 
     /**
      * Getter
      */
-    public static PdfSaveOptions getWordToPdfOptions() {
+    public static com.aspose.words.PdfSaveOptions getWordToPdfOptions() {
         return wordToPdfOptions;
     }
 
@@ -147,13 +123,6 @@ public abstract class AbstractConverter {
      */
     public static com.aspose.cells.PdfSaveOptions getCellToPdfOptions() {
         return cellToPdfOptions;
-    }
-
-    /**
-     * Getter
-     */
-    public static PdfOptions getSlideToPdfOptions() {
-        return slideToPdfOptions;
     }
 
     /**

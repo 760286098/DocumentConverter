@@ -38,15 +38,4 @@ public class ConvertException {
             super(String.format("Cell文件转换出错:[%s]", e.getMessage()));
         }
     }
-
-    public static class SlideConvertException extends RuntimeException {
-        /**
-         * Cell类型文件转换出现的异常
-         *
-         * @param e 异常
-         */
-        public SlideConvertException(final Exception e) {
-            super(String.format("Slide文件转换出错:[%s]", e.getMessage()));
-        }
-    }
 }

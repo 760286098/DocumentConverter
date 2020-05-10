@@ -50,10 +50,6 @@ public class CustomizeConfig {
      * 任务超时时间（单位秒）
      */
     private Integer missionTimeout = 300;
-    /**
-     * 是否允许转换slides
-     */
-    private boolean enableSlides = false;
 
     /**
      * 允许获取自定义配置
