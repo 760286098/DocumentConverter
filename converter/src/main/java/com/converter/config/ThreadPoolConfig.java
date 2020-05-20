@@ -104,7 +104,7 @@ public class ThreadPoolConfig {
     /**
      * 队列大小
      */
-    private Integer queueCapacity = 50;
+    private Integer queueCapacity = maxPoolSize * 10;
     /**
      * 线程池前缀
      */
