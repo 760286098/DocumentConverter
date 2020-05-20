@@ -71,17 +71,21 @@ public abstract class AbstractConverter {
             // input流不能重复读取, 所以需要重新获取
             inputStream = AbstractConverter.class.getResourceAsStream("/static/license/license.lic");
             new com.aspose.cells.License().setLicense(inputStream);
-            // 设置字体目录
-            String fontDir = CustomizeConfig.instance().getFontDir();
-            com.aspose.words.FontSettings.getDefaultInstance().setFontsFolder(fontDir, false);
-            com.aspose.cells.FontConfigs.setFontFolder(fontDir, false);
-            log.debug("成功初始化AbstractConverter");
         } catch (Exception e) {
             if (CustomizeConfig.instance().isAllowWithoutLicense()) {
                 log.warn("授权文件未加载, 转换文件会有水印");
             } else {
                 throw new ConvertException.LicenseException(e);
             }
+        }
+        try {
+            // 设置字体目录
+            String fontDir = CustomizeConfig.instance().getFontDir();
+            com.aspose.words.FontSettings.getDefaultInstance().setFontsFolder(fontDir, false);
+            com.aspose.cells.FontConfigs.setFontFolder(fontDir, false);
+            log.debug("成功初始化AbstractConverter");
+        } catch (Exception e) {
+            log.error("导入字体目录失败", e);
         }
     }
 

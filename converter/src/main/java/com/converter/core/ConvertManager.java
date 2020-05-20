@@ -46,10 +46,6 @@ public class ConvertManager {
      */
     public static final String UPLOAD = "_UPLOAD_";
     /**
-     * GC界限, 如果可用内存与最大内存比例小于GC, 就会进行GC
-     */
-    private static final Double GC = 0.05;
-    /**
      * 存放已完成的转换信息(状态为FINISH、ERROR或CANCEL)
      */
     private static final List<ConvertInfo> FINISHED_INFO = Collections.synchronizedList(new LinkedList<>());
@@ -152,11 +148,6 @@ public class ConvertManager {
                 threadCount.lazySet(realCount);
                 if (realCount < ThreadPoolConfig.getCapacity() && futures.size() < missions.size()) {
                     startMissions();
-                }
-                // 显式调用gc, 释放内存
-                Runtime runtime = Runtime.getRuntime();
-                if (runtime.freeMemory() / (double) runtime.totalMemory() < GC) {
-                    runtime.gc();
                 }
             }, 5, 5, TimeUnit.SECONDS);
         } catch (Exception e) {
